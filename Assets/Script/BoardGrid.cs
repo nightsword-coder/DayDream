@@ -1,0 +1,832 @@
+using System.Collections.Generic;
+using UnityEngine;
+using UnityEngine.EventSystems;
+using UnityEngine.Events;
+
+/// <summary>
+/// 6x6 无边缘棋盘。整张图都是格子，图片中心对应世界坐标 (0,0)。
+/// 列从左往右、行从下往上，都从 0 开始。
+/// </summary>
+[RequireComponent(typeof(SpriteRenderer))]
+public class BoardGrid : MonoBehaviour
+{
+    public int columns = 6;
+    public int rows = 6;
+
+    private float paddingLeft;
+    private float paddingRight;
+    private float paddingBottom;
+    private float paddingTop;
+
+    [Header("悬停高亮")]
+    public Color highlightColor = new Color(0.15f, 1f, 0.25f, 0.45f);
+
+    [Header("点击高亮")]
+    public Color emptyClickColor = new Color(1f, 0.86f, 0.1f, 0.5f);
+    public Color pieceClickColor = new Color(0.62f, 0.2f, 1f, 0.55f);
+
+    [Header("进攻")]
+    public Color attackColor = new Color(1f, 0.2f, 0.15f, 0.5f);
+    public int attackRange = 2;
+
+    [Header("开局")]
+    public BoardSetup setup;
+
+    [Header("移动")]
+    [Min(0.02f)]
+    public float stepSeconds = 0.5f;
+
+    [Header("路径箭头")]
+    public Color pathColor = new Color(1f, 0.48f, 0.12f, 0.95f);
+    [Range(0.08f, 0.45f)]
+    public float pathWidth = 0.2f;
+    [Tooltip("横向箭身，轴点在中心。不填就用纯色方条。")]
+    public Sprite pathShaftSprite;
+    [Tooltip("朝右的箭头，轴点放在尖端。不填就用三角形。")]
+    public Sprite pathHeadSprite;
+    [Tooltip("拐角接头，轴点在中心。不填就用方块。")]
+    public Sprite pathCornerSprite;
+
+    [Header("点击")]
+    public UnityEvent<int, int> onCellClicked;
+
+    /// <summary>
+    /// 每格上方的内容。null 是空格子，否则保存预制体和它的实例。
+    /// 第一维是列，第二维是行，左下角是 [0, 0]。
+    /// </summary>
+    public CellContent[,] cellContent;
+
+    SpriteRenderer _renderer;
+    SpriteRenderer _hover;
+    SpriteRenderer _mark;
+    int _hoverCol = -1;
+    int _hoverRow = -1;
+
+    int _selectedCol = -1;
+    int _selectedRow = -1;
+    bool _pieceSelected;
+    CommandMode _command;
+
+    enum CommandMode
+    {
+        None,
+        Move,
+        Attack,
+    }
+
+    readonly List<SpriteRenderer> _attackMarks = new List<SpriteRenderer>();
+    int _attackUsed;
+    readonly List<RaycastResult> _uiHits = new List<RaycastResult>();
+
+    bool _moving;
+    List<Vector2Int> _path;
+    int _pathIndex;
+    float _moveTime;
+
+    Transform _pathRoot;
+    readonly List<SpriteRenderer> _arrowPool = new List<SpriteRenderer>();
+    int _arrowUsed;
+    int _arrowFromCol = int.MinValue;
+    int _arrowFromRow = int.MinValue;
+    int _arrowToCol = int.MinValue;
+    int _arrowToRow = int.MinValue;
+
+    static Sprite _whiteSprite;
+    static Sprite _arrowHeadSprite;
+    static readonly Vector2Int[] Neighbors =
+    {
+        new Vector2Int(1, 0),
+        new Vector2Int(-1, 0),
+        new Vector2Int(0, 1),
+        new Vector2Int(0, -1),
+    };
+
+    public class CellContent
+    {
+        public GameObject prefab;
+        public GameObject instance;
+    }
+
+    void Awake()
+    {
+        _renderer = GetComponent<SpriteRenderer>();
+        _hover = CreateOverlay("CellHover");
+        _mark = CreateOverlay("CellMark");
+    }
+
+    void Start()
+    {
+        SpawnInitialPieces();
+    }
+
+    void OnValidate()
+    {
+        columns = Mathf.Max(1, columns);
+        rows = Mathf.Max(1, rows);
+    }
+
+    void Update()
+    {
+        if (Camera.main == null)
+            return;
+
+        bool inside = TryScreenToCell(Input.mousePosition, out int col, out int row);
+        UpdateHover(inside, col, row);
+        UpdatePathArrow(inside, col, row);
+
+        if (_moving || !inside || !Input.GetMouseButtonDown(0) || PointerOverButton())
+            return;
+
+        HandleClick(col, row);
+    }
+
+    bool PointerOverButton()
+    {
+        if (EventSystem.current == null)
+            return false;
+
+        _uiHits.Clear();
+        var pointer = new PointerEventData(EventSystem.current);
+        pointer.position = Input.mousePosition;
+        EventSystem.current.RaycastAll(pointer, _uiHits);
+        for (int i = 0; i < _uiHits.Count; i++)
+        {
+            if (_uiHits[i].gameObject.GetComponentInParent<UnityEngine.UI.Button>() != null)
+                return true;
+        }
+        return false;
+    }
+
+    void SpawnInitialPieces()
+    {
+        cellContent = new CellContent[columns, rows];
+        if (setup == null || setup.pieces == null)
+            return;
+
+        for (int row = 0; row < rows; row++)
+        {
+            for (int col = 0; col < columns; col++)
+            {
+                GameObject prefab = setup.GetPrefab(col, row);
+                if (prefab == null)
+                    continue;
+                if (!TryGetCellLocal(col, row, out Vector3 localCenter, out _))
+                    return;
+
+                var instance = Instantiate(prefab, transform);
+                instance.transform.localPosition = localCenter;
+                instance.transform.localRotation = Quaternion.identity;
+                instance.name = $"Piece_{col}_{row}";
+                RaiseAboveBoard(instance);
+                cellContent[col, row] = new CellContent
+                {
+                    prefab = prefab,
+                    instance = instance,
+                };
+            }
+        }
+    }
+
+    GameObject GetInitialPrefab(int col, int row)
+    {
+        if (setup == null || col < 0 || row < 0 || col >= columns || row >= rows)
+            return null;
+        return setup.GetPrefab(col, row);
+    }
+
+    void HandleClick(int col, int row)
+    {
+        bool occupied = cellContent != null && cellContent[col, row] != null;
+        onCellClicked.Invoke(col, row);
+
+        if (_command == CommandMode.Attack && _pieceSelected && InAttackRange(col, row))
+        {
+            if (occupied)
+                ApplyAttack(col, row);
+            EndAttack();
+            return;
+        }
+
+        if (occupied)
+        {
+            SelectPiece(col, row);
+            return;
+        }
+
+        if (_command == CommandMode.Move && _pieceSelected)
+            TryBeginMove(col, row);
+    }
+
+    public bool HasHighlightedPiece => _pieceSelected;
+
+    public void BeginMove()
+    {
+        if (!_pieceSelected || _moving)
+            return;
+
+        _command = CommandMode.Move;
+        ClearAttackRange();
+    }
+
+    public void BeginAttack()
+    {
+        if (!_pieceSelected || _moving)
+            return;
+
+        _command = CommandMode.Attack;
+        ClearPathArrow();
+        ShowAttackRange();
+    }
+
+    void SelectPiece(int col, int row)
+    {
+        _pieceSelected = true;
+        _selectedCol = col;
+        _selectedRow = row;
+        _command = CommandMode.None;
+        ClearAttackRange();
+        ClearPathArrow();
+        ShowMark(col, row, pieceClickColor);
+    }
+
+    void ApplyAttack(int col, int row)
+    {
+        Role attacker = RoleAt(_selectedCol, _selectedRow);
+        Role target = RoleAt(col, row);
+        if (attacker == null || target == null)
+            return;
+
+        int damage = attacker.physicalAttack + attacker.magicAttack;
+        target.health -= damage;
+        target.PlayHurt();
+        DamagePopup.Spawn(target, damage);
+        Debug.Log($"造成 {damage} 点伤害，剩余生命 {target.health}");
+    }
+
+    void EndAttack()
+    {
+        _command = CommandMode.None;
+        ClearAttackRange();
+    }
+
+    bool InAttackRange(int col, int row)
+    {
+        int distance = Mathf.Abs(col - _selectedCol) + Mathf.Abs(row - _selectedRow);
+        return distance > 0 && distance <= attackRange;
+    }
+
+    Role RoleAt(int col, int row)
+    {
+        if (cellContent == null || !InBoard(col, row))
+            return null;
+        CellContent content = cellContent[col, row];
+        if (content == null || content.instance == null)
+            return null;
+        return content.instance.GetComponent<Role>();
+    }
+
+    void ShowAttackRange()
+    {
+        _attackUsed = 0;
+        for (int row = 0; row < rows; row++)
+        {
+            for (int col = 0; col < columns; col++)
+            {
+                if (!InAttackRange(col, row))
+                    continue;
+                PlaceOverlay(RentAttackMark(), col, row, attackColor, 2);
+            }
+        }
+
+        for (int i = _attackUsed; i < _attackMarks.Count; i++)
+            _attackMarks[i].enabled = false;
+    }
+
+    SpriteRenderer RentAttackMark()
+    {
+        SpriteRenderer mark;
+        if (_attackUsed < _attackMarks.Count)
+            mark = _attackMarks[_attackUsed];
+        else
+        {
+            mark = CreateOverlay("AttackMark");
+            _attackMarks.Add(mark);
+        }
+
+        _attackUsed++;
+        return mark;
+    }
+
+    void ClearAttackRange()
+    {
+        for (int i = 0; i < _attackMarks.Count; i++)
+            _attackMarks[i].enabled = false;
+        _attackUsed = 0;
+    }
+
+    void TryBeginMove(int col, int row)
+    {
+        if (col == _selectedCol && row == _selectedRow)
+            return;
+
+        var path = FindShortestPath(_selectedCol, _selectedRow, col, row);
+        if (path == null)
+        {
+            Debug.Log($"从 ({_selectedCol},{_selectedRow}) 到 ({col},{row}) 没有通路。");
+            return;
+        }
+
+        _path = path;
+        _pathIndex = 0;
+        _moveTime = 0f;
+        _moving = true;
+        ShowMark(col, row, emptyClickColor);
+    }
+
+    void FixedUpdate()
+    {
+        if (!_moving || _path == null)
+            return;
+
+        _moveTime += Time.fixedDeltaTime;
+        if (_moveTime < stepSeconds)
+            return;
+
+        _moveTime -= stepSeconds;
+        if (_pathIndex >= _path.Count - 1)
+        {
+            FinishMove();
+            return;
+        }
+
+        Vector2Int from = _path[_pathIndex];
+        Vector2Int to = _path[_pathIndex + 1];
+        CellContent piece = cellContent[from.x, from.y];
+        cellContent[from.x, from.y] = null;
+        cellContent[to.x, to.y] = piece;
+
+        if (piece != null && piece.instance != null && TryGetCellLocal(to.x, to.y, out Vector3 localCenter, out _))
+            piece.instance.transform.localPosition = localCenter;
+
+        _pathIndex++;
+
+        if (_pathIndex >= _path.Count - 1)
+            FinishMove();
+    }
+
+    void FinishMove()
+    {
+        Vector2Int end = _path[_path.Count - 1];
+        _moving = false;
+        _path = null;
+        _command = CommandMode.None;
+        _pieceSelected = true;
+        _selectedCol = end.x;
+        _selectedRow = end.y;
+        ClearPathArrow();
+        ShowMark(_selectedCol, _selectedRow, pieceClickColor);
+    }
+
+    void UpdatePathArrow(bool inside, int col, int row)
+    {
+        if (_moving || _command != CommandMode.Move || !_pieceSelected || cellContent == null)
+        {
+            if (_arrowFromCol != int.MinValue)
+                ClearPathArrow();
+            return;
+        }
+
+        if (!inside)
+        {
+            if (_arrowToCol != int.MinValue)
+                ClearPathArrow();
+            return;
+        }
+
+        if (col == _arrowToCol && row == _arrowToRow && _selectedCol == _arrowFromCol && _selectedRow == _arrowFromRow)
+            return;
+
+        _arrowFromCol = _selectedCol;
+        _arrowFromRow = _selectedRow;
+        _arrowToCol = col;
+        _arrowToRow = row;
+
+        if (col == _selectedCol && row == _selectedRow)
+        {
+            HidePathArrow();
+            return;
+        }
+
+        var path = FindShortestPath(_selectedCol, _selectedRow, col, row);
+        if (path == null || path.Count < 2)
+        {
+            HidePathArrow();
+            return;
+        }
+
+        DrawPathArrow(path);
+    }
+
+    void DrawPathArrow(List<Vector2Int> path)
+    {
+        if (!TryGetCellLocal(path[0].x, path[0].y, out _, out Vector2 cellSize))
+        {
+            HidePathArrow();
+            return;
+        }
+
+        var centers = new Vector3[path.Count];
+        for (int i = 0; i < path.Count; i++)
+        {
+            if (!TryGetCellLocal(path[i].x, path[i].y, out centers[i], out _))
+            {
+                HidePathArrow();
+                return;
+            }
+        }
+
+        float cell = Mathf.Min(cellSize.x, cellSize.y);
+        float thickness = cell * pathWidth;
+        float headLen = Mathf.Min(cell * 0.42f, thickness * 2.4f);
+
+        BeginArrow();
+        for (int i = 0; i < path.Count - 1; i++)
+        {
+            Vector3 from = centers[i];
+            Vector3 to = centers[i + 1];
+            if (i == path.Count - 2)
+            {
+                Vector3 delta = to - from;
+                float length = delta.magnitude;
+                if (length > headLen)
+                    to -= delta / length * headLen;
+            }
+            PlaceShaft(RentArrow(ShaftSprite, 4), from, to, thickness);
+        }
+
+        for (int i = 1; i < path.Count - 1; i++)
+            PlaceJoint(RentArrow(CornerSprite, 5), centers[i], thickness);
+
+        PlaceHead(RentArrow(HeadSprite, 6), centers[path.Count - 2], centers[path.Count - 1], headLen);
+        EndArrow();
+    }
+
+    void BeginArrow()
+    {
+        _arrowUsed = 0;
+        if (_pathRoot == null)
+        {
+            var go = new GameObject("PathArrow");
+            go.transform.SetParent(transform, false);
+            _pathRoot = go.transform;
+        }
+        _pathRoot.gameObject.SetActive(true);
+    }
+
+    void EndArrow()
+    {
+        for (int i = _arrowUsed; i < _arrowPool.Count; i++)
+            _arrowPool[i].gameObject.SetActive(false);
+    }
+
+    SpriteRenderer RentArrow(Sprite sprite, int orderOffset)
+    {
+        SpriteRenderer piece;
+        if (_arrowUsed < _arrowPool.Count)
+            piece = _arrowPool[_arrowUsed];
+        else
+        {
+            var go = new GameObject("PathPiece");
+            go.transform.SetParent(_pathRoot, false);
+            piece = go.AddComponent<SpriteRenderer>();
+            _arrowPool.Add(piece);
+        }
+
+        _arrowUsed++;
+        piece.gameObject.SetActive(true);
+        piece.sprite = sprite;
+        piece.color = pathColor;
+        piece.sortingLayerID = _renderer.sortingLayerID;
+        piece.sortingOrder = _renderer.sortingOrder + orderOffset;
+        return piece;
+    }
+
+    static void PlaceShaft(SpriteRenderer piece, Vector3 from, Vector3 to, float thickness)
+    {
+        Vector3 delta = to - from;
+        float length = delta.magnitude;
+        if (length < 0.0001f)
+        {
+            piece.gameObject.SetActive(false);
+            return;
+        }
+
+        Vector2 size = piece.sprite.bounds.size;
+        piece.transform.localPosition = (from + to) * 0.5f;
+        piece.transform.localRotation = Quaternion.Euler(0f, 0f, Mathf.Atan2(delta.y, delta.x) * Mathf.Rad2Deg);
+        piece.transform.localScale = new Vector3(length / Mathf.Max(0.0001f, size.x), thickness / Mathf.Max(0.0001f, size.y), 1f);
+    }
+
+    static void PlaceJoint(SpriteRenderer piece, Vector3 center, float thickness)
+    {
+        Vector2 size = piece.sprite.bounds.size;
+        piece.transform.localPosition = center;
+        piece.transform.localRotation = Quaternion.identity;
+        piece.transform.localScale = new Vector3(
+            thickness / Mathf.Max(0.0001f, size.x),
+            thickness / Mathf.Max(0.0001f, size.y),
+            1f);
+    }
+
+    static void PlaceHead(SpriteRenderer piece, Vector3 from, Vector3 to, float headLen)
+    {
+        Vector3 delta = to - from;
+        Vector2 size = piece.sprite.bounds.size;
+        float scale = headLen / Mathf.Max(0.0001f, size.x);
+        piece.transform.localPosition = to;
+        piece.transform.localRotation = Quaternion.Euler(0f, 0f, Mathf.Atan2(delta.y, delta.x) * Mathf.Rad2Deg);
+        piece.transform.localScale = new Vector3(scale, scale, 1f);
+    }
+
+    Sprite ShaftSprite => pathShaftSprite != null ? pathShaftSprite : GetWhiteSprite();
+    Sprite HeadSprite => pathHeadSprite != null ? pathHeadSprite : GetArrowHeadSprite();
+    Sprite CornerSprite => pathCornerSprite != null ? pathCornerSprite : GetWhiteSprite();
+
+    void HidePathArrow()
+    {
+        if (_pathRoot != null)
+            _pathRoot.gameObject.SetActive(false);
+    }
+
+    void ClearPathArrow()
+    {
+        _arrowFromCol = _arrowFromRow = _arrowToCol = _arrowToRow = int.MinValue;
+        HidePathArrow();
+    }
+
+    /// <summary>
+    /// 上下左右四方向的最短路。其他预制体视为障碍，返回包含起点和终点的格子列表。
+    /// </summary>
+    public List<Vector2Int> FindShortestPath(int fromCol, int fromRow, int toCol, int toRow)
+    {
+        if (!InBoard(fromCol, fromRow) || !InBoard(toCol, toRow))
+            return null;
+        if (cellContent[toCol, toRow] != null)
+            return null;
+
+        var cameFrom = new Vector2Int[columns, rows];
+        var seen = new bool[columns, rows];
+        var queue = new Queue<Vector2Int>();
+        var start = new Vector2Int(fromCol, fromRow);
+        queue.Enqueue(start);
+        seen[fromCol, fromRow] = true;
+        cameFrom[fromCol, fromRow] = start;
+
+        bool found = fromCol == toCol && fromRow == toRow;
+        while (!found && queue.Count > 0)
+        {
+            Vector2Int current = queue.Dequeue();
+            for (int i = 0; i < Neighbors.Length; i++)
+            {
+                int col = current.x + Neighbors[i].x;
+                int row = current.y + Neighbors[i].y;
+                if (!InBoard(col, row) || seen[col, row] || cellContent[col, row] != null)
+                    continue;
+
+                seen[col, row] = true;
+                cameFrom[col, row] = current;
+                if (col == toCol && row == toRow)
+                {
+                    found = true;
+                    break;
+                }
+                queue.Enqueue(new Vector2Int(col, row));
+            }
+        }
+
+        if (!found)
+            return null;
+
+        var path = new List<Vector2Int>();
+        var step = new Vector2Int(toCol, toRow);
+        path.Add(step);
+        while (step != start)
+        {
+            step = cameFrom[step.x, step.y];
+            path.Add(step);
+        }
+        path.Reverse();
+        return path;
+    }
+
+    bool InBoard(int col, int row)
+    {
+        return col >= 0 && row >= 0 && col < columns && row < rows && cellContent != null;
+    }
+
+    void UpdateHover(bool inside, int col, int row)
+    {
+        if (!inside)
+        {
+            _hoverCol = _hoverRow = -1;
+            _hover.enabled = false;
+            return;
+        }
+
+        if (col == _hoverCol && row == _hoverRow && _hover.enabled)
+            return;
+
+        _hoverCol = col;
+        _hoverRow = row;
+        PlaceOverlay(_hover, col, row, highlightColor, 1);
+    }
+
+    void ShowMark(int col, int row, Color color)
+    {
+        PlaceOverlay(_mark, col, row, color, 2);
+    }
+
+    void PlaceOverlay(SpriteRenderer overlay, int col, int row, Color color, int orderOffset)
+    {
+        overlay.enabled = true;
+        overlay.color = color;
+        overlay.sortingLayerID = _renderer.sortingLayerID;
+        overlay.sortingOrder = _renderer.sortingOrder + orderOffset;
+
+        if (!TryGetCellLocal(col, row, out Vector3 localCenter, out Vector2 localSize))
+            return;
+
+        overlay.transform.localPosition = localCenter;
+        overlay.transform.localScale = new Vector3(localSize.x, localSize.y, 1f);
+    }
+
+    SpriteRenderer CreateOverlay(string name)
+    {
+        var go = new GameObject(name);
+        go.transform.SetParent(transform, false);
+        var overlay = go.AddComponent<SpriteRenderer>();
+        overlay.sprite = GetWhiteSprite();
+        overlay.enabled = false;
+        return overlay;
+    }
+
+    void RaiseAboveBoard(GameObject piece)
+    {
+        var renderers = piece.GetComponentsInChildren<SpriteRenderer>(true);
+        if (renderers.Length == 0)
+            return;
+
+        int minOrder = renderers[0].sortingOrder;
+        for (int i = 1; i < renderers.Length; i++)
+            minOrder = Mathf.Min(minOrder, renderers[i].sortingOrder);
+
+        int delta = _renderer.sortingOrder + 3 - minOrder;
+        for (int i = 0; i < renderers.Length; i++)
+        {
+            renderers[i].sortingLayerID = _renderer.sortingLayerID;
+            renderers[i].sortingOrder += delta;
+        }
+    }
+
+    public bool TryScreenToCell(Vector3 screenPosition, out int col, out int row)
+    {
+        Camera cam = Camera.main;
+        float depth = Mathf.Abs(cam.transform.position.z - transform.position.z);
+        Vector3 world = cam.ScreenToWorldPoint(new Vector3(screenPosition.x, screenPosition.y, depth));
+        return TryWorldToCell(world, out col, out row);
+    }
+
+    public bool TryWorldToCell(Vector3 world, out int col, out int row)
+    {
+        col = -1;
+        row = -1;
+        if (!TryGetLayout(out float left, out float bottom, out float cellW, out float cellH, out Vector2 pivot, out float ppu))
+            return false;
+
+        Vector3 local = transform.InverseTransformPoint(world);
+        float pixelX = local.x * ppu + pivot.x;
+        float pixelY = local.y * ppu + pivot.y;
+
+        col = Mathf.FloorToInt((pixelX - left) / cellW);
+        row = Mathf.FloorToInt((pixelY - bottom) / cellH);
+        return col >= 0 && col < columns && row >= 0 && row < rows;
+    }
+
+    /// <summary>
+    /// 格子中心的世界坐标。col 从左往右，row 从下往上，都从 0 开始。
+    /// 6x6 时，四个中心格 (2,2)(3,2)(2,3)(3,3) 的公共角在棋盘中心。
+    /// </summary>
+    public Vector3 GetCellCenter(int col, int row)
+    {
+        if (!TryGetCellLocal(col, row, out Vector3 localCenter, out _))
+            return transform.position;
+        return transform.TransformPoint(localCenter);
+    }
+
+    bool TryGetCellLocal(int col, int row, out Vector3 localCenter, out Vector2 localSize)
+    {
+        localCenter = Vector3.zero;
+        localSize = Vector2.zero;
+        if (!TryGetLayout(out float left, out float bottom, out float cellW, out float cellH, out Vector2 pivot, out float ppu))
+            return false;
+
+        float pixelX = left + (col + 0.5f) * cellW;
+        float pixelY = bottom + (row + 0.5f) * cellH;
+        localCenter = new Vector3((pixelX - pivot.x) / ppu, (pixelY - pivot.y) / ppu, 0f);
+        localSize = new Vector2(cellW / ppu, cellH / ppu);
+        return true;
+    }
+
+    bool TryGetLayout(out float left, out float bottom, out float cellW, out float cellH, out Vector2 pivot, out float ppu)
+    {
+        left = bottom = cellW = cellH = ppu = 0f;
+        pivot = Vector2.zero;
+
+        if (_renderer == null)
+            _renderer = GetComponent<SpriteRenderer>();
+        Sprite sprite = _renderer != null ? _renderer.sprite : null;
+        if (sprite == null || columns <= 0 || rows <= 0)
+            return false;
+
+        Rect rect = sprite.rect;
+        float innerW = rect.width - paddingLeft - paddingRight;
+        float innerH = rect.height - paddingBottom - paddingTop;
+        if (innerW <= 0f || innerH <= 0f)
+            return false;
+
+        left = paddingLeft;
+        bottom = paddingBottom;
+        cellW = innerW / columns;
+        cellH = innerH / rows;
+        pivot = sprite.pivot;
+        ppu = sprite.pixelsPerUnit;
+        return true;
+    }
+
+    static Sprite GetWhiteSprite()
+    {
+        if (_whiteSprite != null)
+            return _whiteSprite;
+
+        var tex = new Texture2D(1, 1, TextureFormat.RGBA32, false);
+        tex.SetPixel(0, 0, Color.white);
+        tex.Apply();
+        _whiteSprite = Sprite.Create(tex, new Rect(0, 0, 1, 1), new Vector2(0.5f, 0.5f), 1f);
+        return _whiteSprite;
+    }
+
+    static Sprite GetArrowHeadSprite()
+    {
+        if (_arrowHeadSprite != null)
+            return _arrowHeadSprite;
+
+        const int size = 64;
+        var tex = new Texture2D(size, size, TextureFormat.RGBA32, false);
+        tex.wrapMode = TextureWrapMode.Clamp;
+        tex.filterMode = FilterMode.Bilinear;
+        float centerY = (size - 1) * 0.5f;
+        for (int y = 0; y < size; y++)
+        {
+            for (int x = 0; x < size; x++)
+            {
+                float along = x / (float)(size - 1);
+                float halfHeight = (1f - along) * centerY;
+                bool inside = Mathf.Abs(y - centerY) <= halfHeight;
+                tex.SetPixel(x, y, inside ? Color.white : Color.clear);
+            }
+        }
+        tex.Apply();
+        _arrowHeadSprite = Sprite.Create(tex, new Rect(0, 0, size, size), new Vector2(1f, 0.5f), size);
+        return _arrowHeadSprite;
+    }
+
+    [ContextMenu("打印所有格子中心")]
+    void LogAllCellCenters()
+    {
+        for (int row = 0; row < rows; row++)
+        {
+            for (int col = 0; col < columns; col++)
+                Debug.Log($"格子 ({col},{row}) 中心 {GetCellCenter(col, row)}");
+        }
+    }
+
+    void OnDrawGizmosSelected()
+    {
+        if (!TryGetLayout(out _, out _, out _, out _, out _, out _))
+            return;
+
+        for (int row = 0; row < rows; row++)
+        {
+            for (int col = 0; col < columns; col++)
+            {
+                bool occupied = Application.isPlaying && cellContent != null
+                    ? cellContent[col, row] != null
+                    : GetInitialPrefab(col, row) != null;
+                Gizmos.color = occupied
+                    ? new Color(0.7f, 0.3f, 1f, 0.95f)
+                    : new Color(1f, 0.85f, 0.1f, 0.9f);
+                Gizmos.DrawSphere(GetCellCenter(col, row), occupied ? 0.1f : 0.06f);
+            }
+        }
+    }
+}

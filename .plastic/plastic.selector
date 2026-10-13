@@ -1,0 +1,4 @@
+repository "DayDream@tj_wechat_os_qy0wwawek3skv4baa0wew_ti8@cloud.cn"
+  path "/"
+    br "/main"
+    co "/main"
