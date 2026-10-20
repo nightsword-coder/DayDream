@@ -10,6 +10,12 @@ using UnityEngine.Events;
 [RequireComponent(typeof(SpriteRenderer))]
 public class BoardGrid : MonoBehaviour
 {
+    public static BoardGrid Instance { get; private set; }
+
+    const float OverlayZ = -0.4f;
+    const float PieceZ = -1f;
+    const float ArrowZ = -1.2f;
+
     public int columns = 6;
     public int rows = 6;
 
@@ -33,6 +39,7 @@ public class BoardGrid : MonoBehaviour
     public BoardSetup setup;
 
     [Header("移动")]
+    public Color moveRangeColor = new Color(0.25f, 0.55f, 1f, 0.45f);
     [Min(0.02f)]
     public float stepSeconds = 0.5f;
 
@@ -50,10 +57,6 @@ public class BoardGrid : MonoBehaviour
     [Header("点击")]
     public UnityEvent<int, int> onCellClicked;
 
-    /// <summary>
-    /// 每格上方的内容。null 是空格子，否则保存预制体和它的实例。
-    /// 第一维是列，第二维是行，左下角是 [0, 0]。
-    /// </summary>
     public CellContent[,] cellContent;
 
     SpriteRenderer _renderer;
@@ -76,6 +79,10 @@ public class BoardGrid : MonoBehaviour
 
     readonly List<SpriteRenderer> _attackMarks = new List<SpriteRenderer>();
     int _attackUsed;
+    readonly List<SpriteRenderer> _skillMarks = new List<SpriteRenderer>();
+    int _skillUsed;
+    readonly List<SpriteRenderer> _moveMarks = new List<SpriteRenderer>();
+    int _moveUsed;
     readonly List<RaycastResult> _uiHits = new List<RaycastResult>();
 
     bool _moving;
@@ -109,6 +116,7 @@ public class BoardGrid : MonoBehaviour
 
     void Awake()
     {
+        Instance = this;
         _renderer = GetComponent<SpriteRenderer>();
         _hover = CreateOverlay("CellHover");
         _mark = CreateOverlay("CellMark");
@@ -174,10 +182,10 @@ public class BoardGrid : MonoBehaviour
                     return;
 
                 var instance = Instantiate(prefab, transform);
+                localCenter.z = PieceZ;
                 instance.transform.localPosition = localCenter;
                 instance.transform.localRotation = Quaternion.identity;
                 instance.name = $"Piece_{col}_{row}";
-                RaiseAboveBoard(instance);
                 cellContent[col, row] = new CellContent
                 {
                     prefab = prefab,
@@ -199,6 +207,9 @@ public class BoardGrid : MonoBehaviour
         bool occupied = cellContent != null && cellContent[col, row] != null;
         onCellClicked.Invoke(col, row);
 
+        if (SkillExecutor.Instance != null && SkillExecutor.Instance.HandleClick(col, row, occupied))
+            return;
+
         if (_command == CommandMode.Attack && _pieceSelected && InAttackRange(col, row))
         {
             if (occupied)
@@ -219,23 +230,85 @@ public class BoardGrid : MonoBehaviour
 
     public bool HasHighlightedPiece => _pieceSelected;
 
+    public Role SelectedRole => _pieceSelected ? RoleAt(_selectedCol, _selectedRow) : null;
+
+    public void HighlightRole(Role role)
+    {
+        if (role == null || cellContent == null)
+            return;
+
+        for (int row = 0; row < rows; row++)
+        {
+            for (int col = 0; col < columns; col++)
+            {
+                if (RoleAt(col, row) != role)
+                    continue;
+                SelectPiece(col, row);
+                return;
+            }
+        }
+    }
+
     public void BeginMove()
     {
+        if (ActionSkills.Instance != null)
+            ActionSkills.Instance.ClearSelection();
         if (!_pieceSelected || _moving)
             return;
 
         _command = CommandMode.Move;
         ClearAttackRange();
+        ShowMoveRange();
     }
 
     public void BeginAttack()
     {
+        if (ActionSkills.Instance != null)
+            ActionSkills.Instance.ClearSelection();
         if (!_pieceSelected || _moving)
             return;
 
         _command = CommandMode.Attack;
         ClearPathArrow();
+        ClearMoveRange();
         ShowAttackRange();
+    }
+
+    public void EndCommand()
+    {
+        if (_moving)
+            return;
+
+        _command = CommandMode.None;
+        ClearAttackRange();
+        ClearMoveRange();
+        ClearPathArrow();
+    }
+
+    public bool Moving => _moving;
+
+    public bool TryMoveTo(int col, int row)
+    {
+        if (!_pieceSelected || _moving || (col == _selectedCol && row == _selectedRow))
+            return false;
+
+        List<Vector2Int> path = FindShortestPath(_selectedCol, _selectedRow, col, row);
+        if (path == null || !InMoveRange(col, row))
+            return false;
+
+        StartMove(path, col, row);
+        return true;
+    }
+
+    public bool TryAttack(int col, int row)
+    {
+        if (!_pieceSelected || _moving || cellContent == null || !InBoard(col, row))
+            return false;
+        if (cellContent[col, row] == null || !InAttackRange(col, row))
+            return false;
+
+        ApplyAttack(col, row);
+        return true;
     }
 
     void SelectPiece(int col, int row)
@@ -245,6 +318,7 @@ public class BoardGrid : MonoBehaviour
         _selectedRow = row;
         _command = CommandMode.None;
         ClearAttackRange();
+        ClearMoveRange();
         ClearPathArrow();
         ShowMark(col, row, pieceClickColor);
     }
@@ -275,6 +349,11 @@ public class BoardGrid : MonoBehaviour
         return distance > 0 && distance <= attackRange;
     }
 
+    public Role RoleInCell(int col, int row)
+    {
+        return RoleAt(col, row);
+    }
+
     Role RoleAt(int col, int row)
     {
         if (cellContent == null || !InBoard(col, row))
@@ -294,12 +373,67 @@ public class BoardGrid : MonoBehaviour
             {
                 if (!InAttackRange(col, row))
                     continue;
-                PlaceOverlay(RentAttackMark(), col, row, attackColor, 2);
+                PlaceOverlay(RentAttackMark(), col, row, attackColor);
             }
         }
 
         for (int i = _attackUsed; i < _attackMarks.Count; i++)
             _attackMarks[i].enabled = false;
+    }
+
+    void ShowMoveRange()
+    {
+        _moveUsed = 0;
+        for (int row = 0; row < rows; row++)
+        {
+            for (int col = 0; col < columns; col++)
+            {
+                if (!InMoveRange(col, row))
+                    continue;
+                PlaceOverlay(RentMoveMark(), col, row, moveRangeColor);
+            }
+        }
+
+        for (int i = _moveUsed; i < _moveMarks.Count; i++)
+            _moveMarks[i].enabled = false;
+    }
+
+    void ClearMoveRange()
+    {
+        for (int i = 0; i < _moveMarks.Count; i++)
+            _moveMarks[i].enabled = false;
+        _moveUsed = 0;
+    }
+
+    SpriteRenderer RentMoveMark()
+    {
+        SpriteRenderer mark;
+        if (_moveUsed < _moveMarks.Count)
+            mark = _moveMarks[_moveUsed];
+        else
+        {
+            mark = CreateOverlay("MoveMark");
+            _moveMarks.Add(mark);
+        }
+
+        _moveUsed++;
+        return mark;
+    }
+
+    bool InMoveRange(int col, int row)
+    {
+        if (!_pieceSelected || (col == _selectedCol && row == _selectedRow))
+            return false;
+        if (!InBoard(col, row) || cellContent[col, row] != null)
+            return false;
+
+        List<Vector2Int> path = FindShortestPath(_selectedCol, _selectedRow, col, row);
+        if (path == null)
+            return false;
+
+        Role mover = RoleAt(_selectedCol, _selectedRow);
+        int range = mover != null ? Mathf.Max(0, mover.moveRange) : 0;
+        return path.Count - 1 <= range;
     }
 
     SpriteRenderer RentAttackMark()
@@ -324,9 +458,51 @@ public class BoardGrid : MonoBehaviour
         _attackUsed = 0;
     }
 
+    public void ShowSkillMarks(List<Vector2Int> cells)
+    {
+        _skillUsed = 0;
+        if (cells != null)
+        {
+            for (int i = 0; i < cells.Count; i++)
+            {
+                if (!InBoard(cells[i].x, cells[i].y))
+                    continue;
+                PlaceOverlay(RentSkillMark(), cells[i].x, cells[i].y, attackColor);
+            }
+        }
+
+        for (int i = _skillUsed; i < _skillMarks.Count; i++)
+            _skillMarks[i].enabled = false;
+    }
+
+    public void ClearSkillMarks()
+    {
+        for (int i = 0; i < _skillMarks.Count; i++)
+            _skillMarks[i].enabled = false;
+        _skillUsed = 0;
+    }
+
+    SpriteRenderer RentSkillMark()
+    {
+        SpriteRenderer mark;
+        if (_skillUsed < _skillMarks.Count)
+            mark = _skillMarks[_skillUsed];
+        else
+        {
+            mark = CreateOverlay("SkillMark");
+            _skillMarks.Add(mark);
+        }
+
+        _skillUsed++;
+        return mark;
+    }
+
     void TryBeginMove(int col, int row)
     {
         if (col == _selectedCol && row == _selectedRow)
+            return;
+
+        if (!InMoveRange(col, row))
             return;
 
         var path = FindShortestPath(_selectedCol, _selectedRow, col, row);
@@ -336,10 +512,16 @@ public class BoardGrid : MonoBehaviour
             return;
         }
 
+        StartMove(path, col, row);
+    }
+
+    void StartMove(List<Vector2Int> path, int col, int row)
+    {
         _path = path;
         _pathIndex = 0;
         _moveTime = 0f;
         _moving = true;
+        ClearMoveRange();
         ShowMark(col, row, emptyClickColor);
     }
 
@@ -366,7 +548,10 @@ public class BoardGrid : MonoBehaviour
         cellContent[to.x, to.y] = piece;
 
         if (piece != null && piece.instance != null && TryGetCellLocal(to.x, to.y, out Vector3 localCenter, out _))
+        {
+            localCenter.z = PieceZ;
             piece.instance.transform.localPosition = localCenter;
+        }
 
         _pathIndex++;
 
@@ -411,7 +596,7 @@ public class BoardGrid : MonoBehaviour
         _arrowToCol = col;
         _arrowToRow = row;
 
-        if (col == _selectedCol && row == _selectedRow)
+        if (!InMoveRange(col, row))
         {
             HidePathArrow();
             return;
@@ -507,7 +692,10 @@ public class BoardGrid : MonoBehaviour
         piece.sprite = sprite;
         piece.color = pathColor;
         piece.sortingLayerID = _renderer.sortingLayerID;
-        piece.sortingOrder = _renderer.sortingOrder + orderOffset;
+        piece.sortingOrder = _renderer.sortingOrder;
+        Vector3 depth = piece.transform.localPosition;
+        depth.z = ArrowZ - orderOffset * 0.02f;
+        piece.transform.localPosition = depth;
         return piece;
     }
 
@@ -522,7 +710,10 @@ public class BoardGrid : MonoBehaviour
         }
 
         Vector2 size = piece.sprite.bounds.size;
-        piece.transform.localPosition = (from + to) * 0.5f;
+        float z = piece.transform.localPosition.z;
+        Vector3 mid = (from + to) * 0.5f;
+        mid.z = z;
+        piece.transform.localPosition = mid;
         piece.transform.localRotation = Quaternion.Euler(0f, 0f, Mathf.Atan2(delta.y, delta.x) * Mathf.Rad2Deg);
         piece.transform.localScale = new Vector3(length / Mathf.Max(0.0001f, size.x), thickness / Mathf.Max(0.0001f, size.y), 1f);
     }
@@ -530,6 +721,8 @@ public class BoardGrid : MonoBehaviour
     static void PlaceJoint(SpriteRenderer piece, Vector3 center, float thickness)
     {
         Vector2 size = piece.sprite.bounds.size;
+        float z = piece.transform.localPosition.z;
+        center.z = z;
         piece.transform.localPosition = center;
         piece.transform.localRotation = Quaternion.identity;
         piece.transform.localScale = new Vector3(
@@ -543,6 +736,8 @@ public class BoardGrid : MonoBehaviour
         Vector3 delta = to - from;
         Vector2 size = piece.sprite.bounds.size;
         float scale = headLen / Mathf.Max(0.0001f, size.x);
+        float z = piece.transform.localPosition.z;
+        to.z = z;
         piece.transform.localPosition = to;
         piece.transform.localRotation = Quaternion.Euler(0f, 0f, Mathf.Atan2(delta.y, delta.x) * Mathf.Rad2Deg);
         piece.transform.localScale = new Vector3(scale, scale, 1f);
@@ -567,11 +762,11 @@ public class BoardGrid : MonoBehaviour
     /// <summary>
     /// 上下左右四方向的最短路。其他预制体视为障碍，返回包含起点和终点的格子列表。
     /// </summary>
-    public List<Vector2Int> FindShortestPath(int fromCol, int fromRow, int toCol, int toRow)
+    public List<Vector2Int> FindShortestPath(int fromCol, int fromRow, int toCol, int toRow, bool allowOccupiedGoal = false)
     {
         if (!InBoard(fromCol, fromRow) || !InBoard(toCol, toRow))
             return null;
-        if (cellContent[toCol, toRow] != null)
+        if (cellContent[toCol, toRow] != null && !allowOccupiedGoal)
             return null;
 
         var cameFrom = new Vector2Int[columns, rows];
@@ -590,7 +785,10 @@ public class BoardGrid : MonoBehaviour
             {
                 int col = current.x + Neighbors[i].x;
                 int row = current.y + Neighbors[i].y;
-                if (!InBoard(col, row) || seen[col, row] || cellContent[col, row] != null)
+                if (!InBoard(col, row) || seen[col, row])
+                    continue;
+                bool goal = col == toCol && row == toRow;
+                if (cellContent[col, row] != null && !(allowOccupiedGoal && goal))
                     continue;
 
                 seen[col, row] = true;
@@ -638,24 +836,25 @@ public class BoardGrid : MonoBehaviour
 
         _hoverCol = col;
         _hoverRow = row;
-        PlaceOverlay(_hover, col, row, highlightColor, 1);
+        PlaceOverlay(_hover, col, row, highlightColor);
     }
 
     void ShowMark(int col, int row, Color color)
     {
-        PlaceOverlay(_mark, col, row, color, 2);
+        PlaceOverlay(_mark, col, row, color);
     }
 
-    void PlaceOverlay(SpriteRenderer overlay, int col, int row, Color color, int orderOffset)
+    void PlaceOverlay(SpriteRenderer overlay, int col, int row, Color color)
     {
         overlay.enabled = true;
         overlay.color = color;
         overlay.sortingLayerID = _renderer.sortingLayerID;
-        overlay.sortingOrder = _renderer.sortingOrder + orderOffset;
+        overlay.sortingOrder = _renderer.sortingOrder;
 
         if (!TryGetCellLocal(col, row, out Vector3 localCenter, out Vector2 localSize))
             return;
 
+        localCenter.z = OverlayZ;
         overlay.transform.localPosition = localCenter;
         overlay.transform.localScale = new Vector3(localSize.x, localSize.y, 1f);
     }
@@ -668,24 +867,6 @@ public class BoardGrid : MonoBehaviour
         overlay.sprite = GetWhiteSprite();
         overlay.enabled = false;
         return overlay;
-    }
-
-    void RaiseAboveBoard(GameObject piece)
-    {
-        var renderers = piece.GetComponentsInChildren<SpriteRenderer>(true);
-        if (renderers.Length == 0)
-            return;
-
-        int minOrder = renderers[0].sortingOrder;
-        for (int i = 1; i < renderers.Length; i++)
-            minOrder = Mathf.Min(minOrder, renderers[i].sortingOrder);
-
-        int delta = _renderer.sortingOrder + 3 - minOrder;
-        for (int i = 0; i < renderers.Length; i++)
-        {
-            renderers[i].sortingLayerID = _renderer.sortingLayerID;
-            renderers[i].sortingOrder += delta;
-        }
     }
 
     public bool TryScreenToCell(Vector3 screenPosition, out int col, out int row)

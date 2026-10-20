@@ -22,7 +22,7 @@ public class DamagePopup : MonoBehaviour
         SpriteRenderer sprite = target.GetComponent<SpriteRenderer>();
         Vector3 position = target.transform.position;
         if (sprite != null)
-            position = new Vector3(sprite.bounds.center.x, sprite.bounds.max.y, sprite.bounds.center.z);
+            position = new Vector3(sprite.bounds.center.x, sprite.bounds.max.y, sprite.bounds.center.z - 0.2f);
         transform.position = position;
         _start = position;
 
@@ -43,11 +43,11 @@ public class DamagePopup : MonoBehaviour
         if (sprite != null)
         {
             mesh.sortingLayerID = sprite.sortingLayerID;
-            mesh.sortingOrder = sprite.sortingOrder + 5;
+            mesh.sortingOrder = sprite.sortingOrder;
         }
         else
         {
-            mesh.sortingOrder = 20;
+            mesh.sortingOrder = 0;
         }
 
         _color = _text.color;

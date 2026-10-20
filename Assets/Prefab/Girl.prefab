@@ -101,3 +101,4 @@ MonoBehaviour:
   health: 30
   physicalAttack: 2
   magicAttack: 10
+  manaMax: 100

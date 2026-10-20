@@ -8,23 +8,18 @@ public class RolePanel : MonoBehaviour
 {
     public BoardGrid board;
     public Image portrait;
-    public Text healthText;
-    public Text physicalAttackText;
-    public Text magicAttackText;
+    public TMP_Text healthText;
+    public TMP_Text physicalAttackText;
+    public TMP_Text magicAttackText;
+    public TMP_Text manaText;
 
     CanvasGroup _group;
     float _openAlpha = 150f / 255f;
     Role _shown;
-
-    TMP_Text _healthTmp;
-    TMP_Text _physicalTmp;
-    TMP_Text _magicTmp;
     readonly List<RaycastResult> _uiHits = new List<RaycastResult>();
 
     void Awake()
     {
-        BindChildren();
-
         _group = GetComponent<CanvasGroup>();
         if (_group == null)
             _group = gameObject.AddComponent<CanvasGroup>();
@@ -43,12 +38,6 @@ public class RolePanel : MonoBehaviour
         _group.interactable = false;
         _group.blocksRaycasts = false;
         Hide();
-    }
-
-    void Start()
-    {
-        if (board == null)
-            board = FindObjectOfType<BoardGrid>();
     }
 
     void Update()
@@ -104,9 +93,10 @@ public class RolePanel : MonoBehaviour
 
     void RefreshNumbers(Role role)
     {
-        SetText(healthText, _healthTmp, role.health.ToString());
-        SetText(physicalAttackText, _physicalTmp, role.physicalAttack.ToString());
-        SetText(magicAttackText, _magicTmp, role.magicAttack.ToString());
+        SetText(healthText, role.health.ToString());
+        SetText(physicalAttackText, role.physicalAttack.ToString());
+        SetText(magicAttackText, role.magicAttack.ToString());
+        SetMana(role);
     }
 
     void Show(Role role)
@@ -126,9 +116,16 @@ public class RolePanel : MonoBehaviour
             portrait.enabled = sprite != null;
         }
 
-        SetText(healthText, _healthTmp, role.health.ToString());
-        SetText(physicalAttackText, _physicalTmp, role.physicalAttack.ToString());
-        SetText(magicAttackText, _magicTmp, role.magicAttack.ToString());
+        SetText(healthText, role.health.ToString());
+        SetText(physicalAttackText, role.physicalAttack.ToString());
+        SetText(magicAttackText, role.magicAttack.ToString());
+        SetMana(role);
+    }
+
+    void SetMana(Role role)
+    {
+        if (manaText != null)
+            manaText.text = role.currentMana + "/" + role.manaMax;
     }
 
     void Hide()
@@ -136,44 +133,9 @@ public class RolePanel : MonoBehaviour
         _group.alpha = 0f;
     }
 
-    void BindChildren()
-    {
-        if (portrait == null)
-        {
-            Transform found = transform.Find("portrait");
-            if (found != null)
-                portrait = found.GetComponent<Image>();
-        }
-
-        if (healthText != null && physicalAttackText != null && magicAttackText != null)
-            return;
-
-        Text[] texts = GetComponentsInChildren<Text>(true);
-        if (texts.Length >= 3)
-        {
-            if (healthText == null)
-                healthText = texts[0];
-            if (physicalAttackText == null)
-                physicalAttackText = texts[1];
-            if (magicAttackText == null)
-                magicAttackText = texts[2];
-            return;
-        }
-
-        TMP_Text[] tmps = GetComponentsInChildren<TMP_Text>(true);
-        if (tmps.Length >= 3)
-        {
-            _healthTmp = tmps[0];
-            _physicalTmp = tmps[1];
-            _magicTmp = tmps[2];
-        }
-    }
-
-    static void SetText(Text text, TMP_Text tmp, string value)
+    static void SetText(TMP_Text text, string value)
     {
         if (text != null)
             text.text = value;
-        else if (tmp != null)
-            tmp.text = value;
     }
 }

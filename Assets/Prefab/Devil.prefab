@@ -11,6 +11,7 @@ GameObject:
   - component: {fileID: 7994918152129435229}
   - component: {fileID: 5498893303935749371}
   - component: {fileID: -2819894764716225826}
+  - component: {fileID: -1343237050440965785}
   m_Layer: 0
   m_Name: Devil
   m_TagString: Untagged
@@ -101,3 +102,17 @@ MonoBehaviour:
   health: 50
   physicalAttack: 10
   magicAttack: 2
+  manaMax: 10
+  enemy: 0
+--- !u!114 &-1343237050440965785
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2220415071380878210}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 6332ce3af60a0493caa89a1e9b6181af, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
