@@ -9,8 +9,8 @@ public static class SkillEffects
     static readonly SkillFx[] Effects =
     {
         Hit,
-        null,
-        null,
+        Poison,
+        Wet,
         null,
         null,
         null,
@@ -25,18 +25,54 @@ public static class SkillEffects
 
     static IEnumerator Hit(Role role, BoardGrid board, int col, int row)
     {
-        Skill skill = SkillExecutor.Instance != null ? SkillExecutor.Instance.skill : null;
+        if (!Targets(role, board, col, row, out Skill skill, out List<Role> enemies))
+            yield break;
+
+        for (int i = 0; i < enemies.Count; i++)
+            Apply(role, skill, enemies[i]);
+        Finish();
+    }
+
+    static IEnumerator Poison(Role role, BoardGrid board, int col, int row)
+    {
+        if (!Targets(role, board, col, row, out _, out List<Role> enemies))
+            yield break;
+
+        for (int i = 0; i < enemies.Count; i++)
+        {
+            SkillExecutor.Instance.RememberTarget(enemies[i]);
+            enemies[i].ApplyPoison(2);
+        }
+        Finish();
+    }
+
+    static IEnumerator Wet(Role role, BoardGrid board, int col, int row)
+    {
+        if (!Targets(role, board, col, row, out _, out List<Role> enemies))
+            yield break;
+
+        for (int i = 0; i < enemies.Count; i++)
+        {
+            SkillExecutor.Instance.RememberTarget(enemies[i]);
+            enemies[i].ApplyWet(2);
+        }
+        Finish();
+    }
+
+    static bool Targets(Role role, BoardGrid board, int col, int row, out Skill skill, out List<Role> enemies)
+    {
+        skill = SkillExecutor.Instance != null ? SkillExecutor.Instance.skill : null;
+        enemies = null;
         if (role == null || board == null || skill == null)
-            yield break;
+            return false;
         if (!board.TryCellOf(role, out int originCol, out int originRow))
-            yield break;
+            return false;
         if (!skill.InRange(originCol, originRow, col, row))
-            yield break;
+            return false;
 
         var cells = new List<Vector2Int>();
         skill.CopyCells(col, row, cells);
-
-        var enemies = new List<Role>();
+        enemies = new List<Role>();
         for (int i = 0; i < cells.Count; i++)
         {
             Role enemy = board.RoleInCell(cells[i].x, cells[i].y);
@@ -45,12 +81,7 @@ public static class SkillEffects
             enemies.Add(enemy);
         }
 
-        if (enemies.Count == 0 || !Pay(role, skill))
-            yield break;
-
-        for (int i = 0; i < enemies.Count; i++)
-            Apply(role, skill, enemies[i]);
-        Finish();
+        return enemies.Count > 0 && Pay(role, skill);
     }
 
     static bool Listed(List<Role> enemies, Role enemy)
