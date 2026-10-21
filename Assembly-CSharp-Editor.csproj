@@ -65,6 +65,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Assets/Script/Editor/BoardSetupEditor.cs" />
+    <Compile Include="Assets/Script/Editor/SkillEditor.cs" />
   </ItemGroup>
   <ItemGroup>
     <Reference Include="UnityEngine">

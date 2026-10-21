@@ -4,7 +4,7 @@ using UnityEngine;
 
 /// <summary>
 /// 挂在战斗场景的物体上，把 Board 拖进来。
-/// 选中技能后，按技能挂上的函数执行。函数参数是施法者和棋盘。
+/// 选中技能后高亮范围，并等鼠标点下一个目标格，再按技能挂上的函数执行。
 /// </summary>
 public class SkillExecutor : MonoBehaviour
 {
@@ -17,6 +17,8 @@ public class SkillExecutor : MonoBehaviour
     public Skill skill { get; private set; }
 
     readonly List<Coroutine> _routines = new List<Coroutine>();
+    readonly List<Vector2Int> _area = new List<Vector2Int>();
+    readonly List<Vector2Int> _cast = new List<Vector2Int>();
     bool _bound;
     bool _click;
     int _clickCol;
@@ -44,31 +46,86 @@ public class SkillExecutor : MonoBehaviour
             return;
         }
 
-        if (_bound && skill == selected && caster == actor)
+        if (!_bound || skill != selected || caster != actor)
+        {
+            StopRoutines(grid);
+            caster = actor;
+            skill = selected;
+            target = null;
+            _bound = true;
+        }
+
+        Paint(grid, selected, actor);
+
+        if (!TakeClick(out int col, out int row))
             return;
 
-        StopRoutines(grid);
-        caster = actor;
-        skill = selected;
-        target = null;
-        _bound = true;
+        Cast(actor, grid, selected, col, row);
+    }
 
+    void Cast(Role actor, BoardGrid grid, Skill selected, int col, int row)
+    {
+        StopEffectRoutines();
         int[] ids = selected.effectIds;
-        if (ids == null)
-            return;
+        if (ids == null || ids.Length == 0)
+            ids = new[] { 0 };
 
         for (int i = 0; i < ids.Length; i++)
         {
             SkillFx fx = SkillEffects.FunctionAt(ids[i]);
             if (fx == null)
                 continue;
-            _routines.Add(StartCoroutine(fx(actor, grid)));
+            _routines.Add(StartCoroutine(fx(actor, grid, col, row)));
         }
+    }
+
+    void Paint(BoardGrid grid, Skill selected, Role actor)
+    {
+        _area.Clear();
+        _cast.Clear();
+        if (!grid.TryCellOf(actor, out int originCol, out int originRow))
+        {
+            grid.ClearSkillMarks();
+            return;
+        }
+
+        for (int row = 0; row < grid.rows; row++)
+        {
+            for (int col = 0; col < grid.columns; col++)
+            {
+                if (selected.InRange(originCol, originRow, col, row))
+                    _area.Add(new Vector2Int(col, row));
+            }
+        }
+
+        if (Camera.main != null
+            && grid.TryScreenToCell(Input.mousePosition, out int hoverCol, out int hoverRow)
+            && selected.InRange(originCol, originRow, hoverCol, hoverRow))
+        {
+            selected.CopyCells(hoverCol, hoverRow, _cast);
+            for (int i = _area.Count - 1; i >= 0; i--)
+            {
+                if (Listed(_cast, _area[i].x, _area[i].y))
+                    _area.RemoveAt(i);
+            }
+        }
+
+        grid.ShowSkillMarks(_area, _cast);
+    }
+
+    static bool Listed(List<Vector2Int> cells, int col, int row)
+    {
+        for (int i = 0; i < cells.Count; i++)
+        {
+            if (cells[i].x == col && cells[i].y == row)
+                return true;
+        }
+        return false;
     }
 
     public bool HandleClick(int col, int row, bool occupied)
     {
-        if (_routines.Count == 0)
+        if (!_bound)
             return false;
 
         _click = true;
@@ -77,7 +134,7 @@ public class SkillExecutor : MonoBehaviour
         return true;
     }
 
-    public bool TakeClick(out int col, out int row)
+    bool TakeClick(out int col, out int row)
     {
         col = _clickCol;
         row = _clickRow;
@@ -101,6 +158,15 @@ public class SkillExecutor : MonoBehaviour
 
     void StopRoutines(BoardGrid grid)
     {
+        StopEffectRoutines();
+        _bound = false;
+        _click = false;
+        if (grid != null)
+            grid.ClearSkillMarks();
+    }
+
+    void StopEffectRoutines()
+    {
         for (int i = 0; i < _routines.Count; i++)
         {
             if (_routines[i] != null)
@@ -108,10 +174,6 @@ public class SkillExecutor : MonoBehaviour
         }
 
         _routines.Clear();
-        _bound = false;
-        _click = false;
-        if (grid != null)
-            grid.ClearSkillMarks();
     }
 
     BoardGrid Grid

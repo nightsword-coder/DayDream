@@ -16,5 +16,6 @@ MonoBehaviour:
   image: {fileID: 21300000, guid: ca38da25e5436437d88a277b6f55f639, type: 3}
   mana: 5
   power: 100
+  range: 3
   effectIds: []
   description: default description

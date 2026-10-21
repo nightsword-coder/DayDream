@@ -16,6 +16,8 @@ public class BattleManager : MonoBehaviour
     bool _over;
 
     public Role Current { get; private set; }
+    public bool CanMove { get; private set; }
+    public bool CanAttack { get; private set; }
 
     void Awake()
     {
@@ -52,6 +54,10 @@ public class BattleManager : MonoBehaviour
     {
         if (_over || !_ready || _order.Count == 0)
             return;
+
+        if (Current != null)
+            Current.TickStatuses();
+
         if (ProtagonistDead())
         {
             Lose();
@@ -65,6 +71,16 @@ public class BattleManager : MonoBehaviour
 
         _index++;
         BeginTurn();
+    }
+
+    public void UseMove()
+    {
+        CanMove = false;
+    }
+
+    public void UseAttack()
+    {
+        CanAttack = false;
     }
 
     void BuildOrder()
@@ -104,6 +120,8 @@ public class BattleManager : MonoBehaviour
             if (role != null && role.health > 0)
             {
                 Current = role;
+                CanMove = true;
+                CanAttack = true;
                 BoardGrid.Instance.HighlightRole(role);
                 Enemy enemy = role.GetComponent<Enemy>();
                 if (enemy != null)
@@ -146,6 +164,8 @@ public class BattleManager : MonoBehaviour
     {
         _over = true;
         Current = null;
+        CanMove = false;
+        CanAttack = false;
         if (victoryPanel != null)
             victoryPanel.SetActive(true);
     }
@@ -154,6 +174,8 @@ public class BattleManager : MonoBehaviour
     {
         _over = true;
         Current = null;
+        CanMove = false;
+        CanAttack = false;
         if (FailPanel != null)
             FailPanel.SetActive(true);
     }

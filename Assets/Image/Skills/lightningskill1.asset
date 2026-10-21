@@ -16,6 +16,7 @@ MonoBehaviour:
   image: {fileID: 21300000, guid: 37e485060259e4815b18f0eea0177b90, type: 3}
   mana: 8
   power: 180
+  range: 3
   effectIds:
   - 0
   description: 'Thunderstorm''s Fury

@@ -24,4 +24,13 @@ public class BoardActions : MonoBehaviour
         if (attackButton != null)
             attackButton.onClick.AddListener(board.BeginAttack);
     }
+
+    void Update()
+    {
+        BattleManager battle = BattleManager.Instance;
+        if (moveButton != null)
+            moveButton.interactable = battle == null || battle.CanMove;
+        if (attackButton != null)
+            attackButton.interactable = battle == null || battle.CanAttack;
+    }
 }

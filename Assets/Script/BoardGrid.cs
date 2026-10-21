@@ -210,7 +210,7 @@ public class BoardGrid : MonoBehaviour
         if (SkillExecutor.Instance != null && SkillExecutor.Instance.HandleClick(col, row, occupied))
             return;
 
-        if (_command == CommandMode.Attack && _pieceSelected && InAttackRange(col, row))
+        if (_command == CommandMode.Attack && _pieceSelected && CanAttack() && InAttackRange(col, row))
         {
             if (occupied)
                 ApplyAttack(col, row);
@@ -220,6 +220,9 @@ public class BoardGrid : MonoBehaviour
 
         if (occupied)
         {
+            Role role = RoleAt(col, row);
+            if (role != null && !CanControl(role))
+                return;
             SelectPiece(col, row);
             return;
         }
@@ -253,7 +256,7 @@ public class BoardGrid : MonoBehaviour
     {
         if (ActionSkills.Instance != null)
             ActionSkills.Instance.ClearSelection();
-        if (!_pieceSelected || _moving)
+        if (!_pieceSelected || _moving || !CanMove())
             return;
 
         _command = CommandMode.Move;
@@ -265,7 +268,7 @@ public class BoardGrid : MonoBehaviour
     {
         if (ActionSkills.Instance != null)
             ActionSkills.Instance.ClearSelection();
-        if (!_pieceSelected || _moving)
+        if (!_pieceSelected || _moving || !CanAttack())
             return;
 
         _command = CommandMode.Attack;
@@ -289,7 +292,7 @@ public class BoardGrid : MonoBehaviour
 
     public bool TryMoveTo(int col, int row)
     {
-        if (!_pieceSelected || _moving || (col == _selectedCol && row == _selectedRow))
+        if (!_pieceSelected || _moving || !CanMove() || (col == _selectedCol && row == _selectedRow))
             return false;
 
         List<Vector2Int> path = FindShortestPath(_selectedCol, _selectedRow, col, row);
@@ -302,13 +305,36 @@ public class BoardGrid : MonoBehaviour
 
     public bool TryAttack(int col, int row)
     {
-        if (!_pieceSelected || _moving || cellContent == null || !InBoard(col, row))
+        if (!_pieceSelected || _moving || !CanAttack() || cellContent == null || !InBoard(col, row))
             return false;
         if (cellContent[col, row] == null || !InAttackRange(col, row))
             return false;
 
         ApplyAttack(col, row);
         return true;
+    }
+
+    bool CanMove()
+    {
+        return BattleManager.Instance == null || BattleManager.Instance.CanMove;
+    }
+
+    bool CanAttack()
+    {
+        return BattleManager.Instance == null || BattleManager.Instance.CanAttack;
+    }
+
+    bool CanControl(Role role)
+    {
+        if (role.GetComponent<Enemy>() == null)
+            return true;
+
+        BattleManager battle = BattleManager.Instance;
+        if (battle == null)
+            return true;
+
+        Role current = battle.Current;
+        return current != null && current.GetComponent<Enemy>() != null;
     }
 
     void SelectPiece(int col, int row)
@@ -334,6 +360,8 @@ public class BoardGrid : MonoBehaviour
         target.health -= damage;
         target.PlayHurt();
         DamagePopup.Spawn(target, damage);
+        if (BattleManager.Instance != null)
+            BattleManager.Instance.UseAttack();
         Debug.Log($"造成 {damage} 点伤害，剩余生命 {target.health}");
     }
 
@@ -352,6 +380,28 @@ public class BoardGrid : MonoBehaviour
     public Role RoleInCell(int col, int row)
     {
         return RoleAt(col, row);
+    }
+
+    public bool TryCellOf(Role role, out int col, out int row)
+    {
+        col = -1;
+        row = -1;
+        if (role == null || cellContent == null)
+            return false;
+
+        for (int r = 0; r < rows; r++)
+        {
+            for (int c = 0; c < columns; c++)
+            {
+                if (RoleInCell(c, r) != role)
+                    continue;
+                col = c;
+                row = r;
+                return true;
+            }
+        }
+
+        return false;
     }
 
     Role RoleAt(int col, int row)
@@ -458,21 +508,27 @@ public class BoardGrid : MonoBehaviour
         _attackUsed = 0;
     }
 
-    public void ShowSkillMarks(List<Vector2Int> cells)
+    public void ShowSkillMarks(List<Vector2Int> rangeCells, List<Vector2Int> castCells)
     {
         _skillUsed = 0;
-        if (cells != null)
-        {
-            for (int i = 0; i < cells.Count; i++)
-            {
-                if (!InBoard(cells[i].x, cells[i].y))
-                    continue;
-                PlaceOverlay(RentSkillMark(), cells[i].x, cells[i].y, attackColor);
-            }
-        }
+        StampSkillMarks(rangeCells, attackColor);
+        StampSkillMarks(castCells, attackColor);
 
         for (int i = _skillUsed; i < _skillMarks.Count; i++)
             _skillMarks[i].enabled = false;
+    }
+
+    void StampSkillMarks(List<Vector2Int> cells, Color color)
+    {
+        if (cells == null)
+            return;
+
+        for (int i = 0; i < cells.Count; i++)
+        {
+            if (!InBoard(cells[i].x, cells[i].y))
+                continue;
+            PlaceOverlay(RentSkillMark(), cells[i].x, cells[i].y, color);
+        }
     }
 
     public void ClearSkillMarks()
@@ -499,7 +555,7 @@ public class BoardGrid : MonoBehaviour
 
     void TryBeginMove(int col, int row)
     {
-        if (col == _selectedCol && row == _selectedRow)
+        if (col == _selectedCol && row == _selectedRow || !CanMove())
             return;
 
         if (!InMoveRange(col, row))
@@ -521,6 +577,8 @@ public class BoardGrid : MonoBehaviour
         _pathIndex = 0;
         _moveTime = 0f;
         _moving = true;
+        if (BattleManager.Instance != null)
+            BattleManager.Instance.UseMove();
         ClearMoveRange();
         ShowMark(col, row, emptyClickColor);
     }
