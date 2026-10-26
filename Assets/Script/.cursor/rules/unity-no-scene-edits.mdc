@@ -1,0 +1,31 @@
+---
+description: 不要擅自在磁盘上修改 Unity 场景、预制体或挂载脚本
+alwaysApply: true
+---
+
+# 不要改 Unity 场景和挂载
+
+只改用户点名的 C# 脚本。不要自己改这些 Unity 资源的磁盘内容：
+
+- `*.unity` 场景
+- `*.prefab` 预制体
+- `*.asset` 序列化资源（开局配置、技能资源等）
+- 为了挂组件、拖引用、改 Transform 而去改上面这些文件的 YAML
+
+用户明确说「改这个场景」或「把脚本挂到某个物体上」时，才可以改对应文件。
+
+脚本写好后，用文字说明要在 Inspector 里做什么：挂到哪个物体、要拖哪些引用。
+
+```yaml
+# ❌ 自己改场景，把脚本挂到 board2.5 上
+# Assets/Scenes/TestFight2.5D.unity
+m_Script: {fileID: 11500000, guid: ..., type: 3}
+board: {fileID: 394205214}
+moveButton: {fileID: 1208658968}
+```
+
+```text
+✅ 只改脚本，然后告诉用户：
+在 board2.5 上挂 Board25Grid。
+场景里已有的 Move 按钮，拖到 BoardActions 的 moveButton。
+```

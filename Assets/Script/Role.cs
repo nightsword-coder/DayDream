@@ -10,6 +10,7 @@ public class Role : MonoBehaviour
     public int physicalAttack = 10;
     public int magicAttack = 10;
     public int manaMax = 10;
+    public int manaRegen;
     public int moveRange = 4;
     public int range = 1;
     public Sprite poisonSprite;
@@ -39,6 +40,10 @@ public class Role : MonoBehaviour
     Color _color = Color.white;
     Vector3 _scale;
     StatusView[] _statuses;
+    Coroutine _hurt;
+    bool _dying;
+
+    public bool PlayingDeath { get; private set; }
 
     void Awake()
     {
@@ -47,15 +52,58 @@ public class Role : MonoBehaviour
             _color = _renderer.color;
         _scale = transform.localScale;
         healthMax = health;
-        currentMana = manaMax;
+        currentMana = 0;
         BindStatuses();
         RefreshStatusIcons();
     }
 
     public void PlayHurt()
     {
-        StopAllCoroutines();
-        StartCoroutine(HurtFlash());
+        if (_dying)
+            return;
+        StopHurt();
+        _hurt = StartCoroutine(HurtFlash());
+    }
+
+    public void PlayDeath()
+    {
+        if (_dying)
+            return;
+        _dying = true;
+        PlayingDeath = true;
+        StopHurt();
+        StartCoroutine(Die());
+    }
+
+    void StopHurt()
+    {
+        if (_hurt == null)
+            return;
+        StopCoroutine(_hurt);
+        _hurt = null;
+        if (_renderer != null)
+            _renderer.color = _color;
+        transform.localScale = _scale;
+    }
+
+    IEnumerator Die()
+    {
+        _hurt = StartCoroutine(HurtFlash());
+        yield return _hurt;
+
+        float time = 0f;
+        const float duration = 1f;
+        while (time < duration)
+        {
+            time += Time.deltaTime;
+            float factor = 1f - Mathf.Clamp01(time / duration);
+            transform.localScale = _scale * factor;
+            yield return null;
+        }
+
+        transform.localScale = Vector3.zero;
+        PlayingDeath = false;
+        gameObject.SetActive(false);
     }
 
     IEnumerator HurtFlash()
@@ -75,6 +123,7 @@ public class Role : MonoBehaviour
         if (_renderer != null)
             _renderer.color = _color;
         transform.localScale = _scale;
+        _hurt = null;
     }
 
     public void ApplyPoison(int x)
@@ -215,6 +264,11 @@ public class Role : MonoBehaviour
                 return i;
         }
         return -1;
+    }
+
+    public void RecoverMana()
+    {
+        currentMana = Mathf.Clamp(currentMana + manaRegen, 0, manaMax);
     }
 
     public bool SpendMana(int amount)

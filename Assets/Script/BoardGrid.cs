@@ -12,7 +12,7 @@ public class BoardGrid : MonoBehaviour
 {
     public static BoardGrid Instance { get; private set; }
 
-    const float OverlayZ = -0.4f;
+    protected const float OverlayZ = -0.4f;
     const float PieceZ = -1f;
     const float ArrowZ = -1.2f;
 
@@ -165,10 +165,15 @@ public class BoardGrid : MonoBehaviour
         return false;
     }
 
-    void SpawnInitialPieces()
+    protected virtual bool CanUseSetup()
+    {
+        return setup != null && setup.pieces != null;
+    }
+
+    protected virtual void SpawnInitialPieces()
     {
         cellContent = new CellContent[columns, rows];
-        if (setup == null || setup.pieces == null)
+        if (!CanUseSetup())
             return;
 
         for (int row = 0; row < rows; row++)
@@ -178,11 +183,10 @@ public class BoardGrid : MonoBehaviour
                 GameObject prefab = setup.GetPrefab(col, row);
                 if (prefab == null)
                     continue;
-                if (!TryGetCellLocal(col, row, out Vector3 localCenter, out _))
+                if (!TryGetPieceLocal(col, row, out Vector3 localCenter))
                     return;
 
                 var instance = Instantiate(prefab, transform);
-                localCenter.z = PieceZ;
                 instance.transform.localPosition = localCenter;
                 instance.transform.localRotation = Quaternion.identity;
                 instance.name = $"Piece_{col}_{row}";
@@ -197,7 +201,7 @@ public class BoardGrid : MonoBehaviour
 
     GameObject GetInitialPrefab(int col, int row)
     {
-        if (setup == null || col < 0 || row < 0 || col >= columns || row >= rows)
+        if (!CanUseSetup() || col < 0 || row < 0 || col >= columns || row >= rows)
             return null;
         return setup.GetPrefab(col, row);
     }
@@ -221,7 +225,7 @@ public class BoardGrid : MonoBehaviour
         if (occupied)
         {
             Role role = RoleAt(col, row);
-            if (role != null && !CanControl(role))
+            if (role == null || !CanControl(role))
                 return;
             SelectPiece(col, row);
             return;
@@ -605,11 +609,8 @@ public class BoardGrid : MonoBehaviour
         cellContent[from.x, from.y] = null;
         cellContent[to.x, to.y] = piece;
 
-        if (piece != null && piece.instance != null && TryGetCellLocal(to.x, to.y, out Vector3 localCenter, out _))
-        {
-            localCenter.z = PieceZ;
+        if (piece != null && piece.instance != null && TryGetPieceLocal(to.x, to.y, out Vector3 localCenter))
             piece.instance.transform.localPosition = localCenter;
-        }
 
         _pathIndex++;
 
@@ -902,7 +903,7 @@ public class BoardGrid : MonoBehaviour
         PlaceOverlay(_mark, col, row, color);
     }
 
-    void PlaceOverlay(SpriteRenderer overlay, int col, int row, Color color)
+    protected virtual void PlaceOverlay(SpriteRenderer overlay, int col, int row, Color color)
     {
         overlay.enabled = true;
         overlay.color = color;
@@ -935,7 +936,7 @@ public class BoardGrid : MonoBehaviour
         return TryWorldToCell(world, out col, out row);
     }
 
-    public bool TryWorldToCell(Vector3 world, out int col, out int row)
+    public virtual bool TryWorldToCell(Vector3 world, out int col, out int row)
     {
         col = -1;
         row = -1;
@@ -962,7 +963,17 @@ public class BoardGrid : MonoBehaviour
         return transform.TransformPoint(localCenter);
     }
 
-    bool TryGetCellLocal(int col, int row, out Vector3 localCenter, out Vector2 localSize)
+    protected virtual bool TryGetPieceLocal(int col, int row, out Vector3 local)
+    {
+        local = Vector3.zero;
+        if (!TryGetCellLocal(col, row, out local, out _))
+            return false;
+
+        local.z = PieceZ;
+        return true;
+    }
+
+    protected virtual bool TryGetCellLocal(int col, int row, out Vector3 localCenter, out Vector2 localSize)
     {
         localCenter = Vector3.zero;
         localSize = Vector2.zero;

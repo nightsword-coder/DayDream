@@ -14,6 +14,7 @@ public class BattleManager : MonoBehaviour
     int _index;
     bool _ready;
     bool _over;
+    bool _turnEnding;
 
     public Role Current { get; private set; }
     public bool CanMove { get; private set; }
@@ -44,6 +45,14 @@ public class BattleManager : MonoBehaviour
             BeginTurn();
         }
 
+        NoticeDeaths();
+        if (_turnEnding)
+        {
+            FinishTurn();
+            return;
+        }
+        if (DeathsPlaying())
+            return;
         if (ProtagonistDead())
             Lose();
         else if (AllEnemiesDead())
@@ -52,12 +61,26 @@ public class BattleManager : MonoBehaviour
 
     public void EndTurn()
     {
-        if (_over || !_ready || _order.Count == 0)
+        if (ActionSkills.Instance != null)
+            ActionSkills.Instance.ClearSelection();
+
+        if (_over || !_ready || _order.Count == 0 || _turnEnding)
             return;
 
         if (Current != null)
             Current.TickStatuses();
 
+        NoticeDeaths();
+        _turnEnding = true;
+        FinishTurn();
+    }
+
+    void FinishTurn()
+    {
+        if (DeathsPlaying())
+            return;
+
+        _turnEnding = false;
         if (ProtagonistDead())
         {
             Lose();
@@ -120,6 +143,7 @@ public class BattleManager : MonoBehaviour
             if (role != null && role.health > 0)
             {
                 Current = role;
+                role.RecoverMana();
                 CanMove = true;
                 CanAttack = true;
                 BoardGrid.Instance.HighlightRole(role);
@@ -132,6 +156,27 @@ public class BattleManager : MonoBehaviour
             _index++;
             guard++;
         }
+    }
+
+    void NoticeDeaths()
+    {
+        for (int i = 0; i < _order.Count; i++)
+        {
+            Role role = _order[i];
+            if (role != null && role.health <= 0)
+                role.PlayDeath();
+        }
+    }
+
+    bool DeathsPlaying()
+    {
+        for (int i = 0; i < _order.Count; i++)
+        {
+            Role role = _order[i];
+            if (role != null && role.PlayingDeath)
+                return true;
+        }
+        return false;
     }
 
     bool ProtagonistDead()

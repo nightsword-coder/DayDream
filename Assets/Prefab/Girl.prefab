@@ -1129,7 +1129,8 @@ MonoBehaviour:
   health: 30
   physicalAttack: 2
   magicAttack: 10
-  manaMax: 100
+  manaMax: 20
+  manaRegen: 8
   moveRange: 4
   range: 1
   poisonSprite: {fileID: 21300000, guid: 6eb620c3006b04ef1837ec9f00d83977, type: 3}

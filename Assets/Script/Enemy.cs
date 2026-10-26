@@ -9,6 +9,7 @@ using UnityEngine;
 public class Enemy : MonoBehaviour
 {
     Role _role;
+    Coroutine _turn;
 
     void Awake()
     {
@@ -17,8 +18,9 @@ public class Enemy : MonoBehaviour
 
     public void Act()
     {
-        StopAllCoroutines();
-        StartCoroutine(TakeTurn());
+        if (_turn != null)
+            StopCoroutine(_turn);
+        _turn = StartCoroutine(TakeTurn());
     }
 
     IEnumerator TakeTurn()
@@ -46,8 +48,10 @@ public class Enemy : MonoBehaviour
             yield break;
 
         board.HighlightRole(_role);
-        if (CellOf(board, player, out playerCol, out playerRow))
-            board.TryAttack(playerCol, playerRow);
+        bool attacked = CellOf(board, player, out playerCol, out playerRow)
+            && board.TryAttack(playerCol, playerRow);
+        if (attacked && PoisonWillHurt() && StillMyTurn())
+            yield return new WaitForSeconds(0.5f);
 
         EndIfStillMyTurn();
     }
@@ -70,6 +74,11 @@ public class Enemy : MonoBehaviour
         destCol = path[steps].x;
         destRow = path[steps].y;
         return true;
+    }
+
+    bool PoisonWillHurt()
+    {
+        return _role != null && _role.poisonTurns > 0 && _role.healthMax * 10 / 100 > 0;
     }
 
     void EndIfStillMyTurn()

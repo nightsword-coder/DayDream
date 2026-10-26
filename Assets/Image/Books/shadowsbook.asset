@@ -15,3 +15,5 @@ MonoBehaviour:
   bookName: ShadowsBook
   sprite: {fileID: 21300000, guid: f08cda2f1ef2642a894e4ec9f324301d, type: 3}
   description: '  Darkness is not emptiness; some secrets emerge only in shadow.'
+  skills:
+  - {fileID: 11400000, guid: 6516fa777cac64ca0ba44b42d21dd109, type: 2}

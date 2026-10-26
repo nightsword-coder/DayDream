@@ -15,3 +15,5 @@ MonoBehaviour:
   bookName: NatureBook
   sprite: {fileID: 21300000, guid: 66a3e0fc9a30f4237b8fcfc0c6d565c0, type: 3}
   description: '  Life turns endlessly, and ancient whispers dwell within all things.'
+  skills:
+  - {fileID: 11400000, guid: ede912351958a4f3fb7a341e7122746b, type: 2}

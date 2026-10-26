@@ -11,7 +11,7 @@ public static class SkillEffects
         Hit,
         Poison,
         Wet,
-        null,
+        DoubleWet,
         null,
         null,
     };
@@ -59,6 +59,11 @@ public static class SkillEffects
         Finish();
     }
 
+    static IEnumerator DoubleWet(Role role, BoardGrid board, int col, int row)
+    {
+        yield break;
+    }
+
     static bool Targets(Role role, BoardGrid board, int col, int row, out Skill skill, out List<Role> enemies)
     {
         skill = SkillExecutor.Instance != null ? SkillExecutor.Instance.skill : null;
@@ -101,9 +106,25 @@ public static class SkillEffects
 
     static void Apply(Role role, Skill skill, Role enemy)
     {
-        int damage = role.magicAttack * skill.power / 100;
+        int power = skill.power;
+        if (enemy.wetTurns > 0 && HasEffect(skill, 3))
+            power *= 2;
+        int damage = role.magicAttack * power / 100;
         SkillExecutor.Instance.RememberTarget(enemy);
         enemy.TakeSkillDamage(damage);
+    }
+
+    static bool HasEffect(Skill skill, int id)
+    {
+        int[] ids = skill.effectIds;
+        if (ids == null)
+            return false;
+        for (int i = 0; i < ids.Length; i++)
+        {
+            if (ids[i] == id)
+                return true;
+        }
+        return false;
     }
 
     static void Finish()
