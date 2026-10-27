@@ -20,7 +20,88 @@ public class Board25Grid : BoardGrid
     readonly Vector2 leftCorner = new Vector2(10f, 829f);
     readonly Vector2 farCorner = new Vector2(752.9f, 1259.1f);
 
+    const string PieceLayer = "Chess Piece";
+
+    static readonly int Facing = Animator.StringToHash("facing");
+    static readonly int Moving = Animator.StringToHash("moving");
+
     static Material _diamondMaterial;
+
+    protected override void BeginPieceStep(int fromCol, int fromRow, int toCol, int toRow)
+    {
+        Animator animator = PieceAnimator(fromCol, fromRow);
+        if (animator == null || !HasParameter(animator, Facing) || !HasParameter(animator, Moving))
+            return;
+
+        int facing = FacingOf(toCol - fromCol, toRow - fromRow);
+        if (facing == 0)
+            return;
+
+        animator.SetInteger(Facing, facing);
+        animator.SetBool(Moving, true);
+    }
+
+    protected override void EndPieceMove(GameObject piece)
+    {
+        if (piece == null)
+            return;
+
+        Animator animator = piece.GetComponentInChildren<Animator>(true);
+        if (animator == null || !HasParameter(animator, Moving))
+            return;
+
+        animator.SetBool(Moving, false);
+    }
+
+    static int FacingOf(int dx, int dy)
+    {
+        if (dx > 0)
+            return 1;
+        if (dx < 0)
+            return 2;
+        if (dy > 0)
+            return 3;
+        if (dy < 0)
+            return 4;
+        return 0;
+    }
+
+    Animator PieceAnimator(int col, int row)
+    {
+        if (cellContent == null || col < 0 || row < 0 || col >= columns || row >= rows)
+            return null;
+
+        CellContent content = cellContent[col, row];
+        if (content == null || content.instance == null)
+            return null;
+
+        return content.instance.GetComponentInChildren<Animator>(true);
+    }
+
+    static bool HasParameter(Animator animator, int hash)
+    {
+        AnimatorControllerParameter[] parameters = animator.parameters;
+        for (int i = 0; i < parameters.Length; i++)
+        {
+            if (parameters[i].nameHash == hash)
+                return true;
+        }
+        return false;
+    }
+
+    protected override void ApplyPieceOrder(GameObject piece, int col, int row)
+    {
+        if (piece == null)
+            return;
+
+        int order = 14 - col - row;
+        Renderer[] renderers = piece.GetComponentsInChildren<Renderer>(true);
+        for (int i = 0; i < renderers.Length; i++)
+        {
+            renderers[i].sortingLayerName = PieceLayer;
+            renderers[i].sortingOrder = order;
+        }
+    }
 
     void Reset()
     {

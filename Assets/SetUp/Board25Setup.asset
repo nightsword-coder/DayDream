@@ -15,24 +15,21 @@ MonoBehaviour:
   columns: 8
   rows: 8
   pieces:
-  - col: 3
-    row: 5
-    prefab: {fileID: 7398706922586940775, guid: 947558226263d4dbfa82891473958e04, type: 3}
-  - col: 3
-    row: 2
-    prefab: {fileID: 7398706922586940775, guid: 947558226263d4dbfa82891473958e04, type: 3}
   - col: 0
     row: 0
-    prefab: {fileID: 3806637548469135845, guid: 9ddfa74114255486ba15f9420c3aae87, type: 3}
-  - col: 7
-    row: 0
-    prefab: {fileID: 3806637548469135845, guid: 9ddfa74114255486ba15f9420c3aae87, type: 3}
-  - col: 7
-    row: 7
     prefab: {fileID: 3806637548469135845, guid: 9ddfa74114255486ba15f9420c3aae87, type: 3}
   - col: 4
     row: 4
     prefab: {fileID: 3806637548469135845, guid: 9ddfa74114255486ba15f9420c3aae87, type: 3}
-  - col: 5
-    row: 6
+  - col: 0
+    row: 7
     prefab: {fileID: 3806637548469135845, guid: 9ddfa74114255486ba15f9420c3aae87, type: 3}
+  - col: 7
+    row: 7
+    prefab: {fileID: 3806637548469135845, guid: 9ddfa74114255486ba15f9420c3aae87, type: 3}
+  - col: 7
+    row: 0
+    prefab: {fileID: 3806637548469135845, guid: 9ddfa74114255486ba15f9420c3aae87, type: 3}
+  - col: 2
+    row: 3
+    prefab: {fileID: 7398706922586940775, guid: 947558226263d4dbfa82891473958e04, type: 3}

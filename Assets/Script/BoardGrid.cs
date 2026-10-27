@@ -86,9 +86,12 @@ public class BoardGrid : MonoBehaviour
     readonly List<RaycastResult> _uiHits = new List<RaycastResult>();
 
     bool _moving;
+    bool _slide;
     List<Vector2Int> _path;
     int _pathIndex;
     float _moveTime;
+    Vector3 _slideFrom;
+    Vector3 _slideTo;
 
     Transform _pathRoot;
     readonly List<SpriteRenderer> _arrowPool = new List<SpriteRenderer>();
@@ -135,6 +138,9 @@ public class BoardGrid : MonoBehaviour
 
     void Update()
     {
+        if (_slide)
+            TickSlide(Time.deltaTime);
+
         if (Camera.main == null)
             return;
 
@@ -195,8 +201,13 @@ public class BoardGrid : MonoBehaviour
                     prefab = prefab,
                     instance = instance,
                 };
+                ApplyPieceOrder(instance, col, row);
             }
         }
+    }
+
+    protected virtual void ApplyPieceOrder(GameObject piece, int col, int row)
+    {
     }
 
     GameObject GetInitialPrefab(int col, int row)
@@ -581,15 +592,24 @@ public class BoardGrid : MonoBehaviour
         _pathIndex = 0;
         _moveTime = 0f;
         _moving = true;
+        _slide = false;
         if (BattleManager.Instance != null)
             BattleManager.Instance.UseMove();
         ClearMoveRange();
         ShowMark(col, row, emptyClickColor);
+
+        if (path.Count < 2)
+            return;
+
+        _slide = PieceHasAnimator(path[0].x, path[0].y);
+        BeginPieceStep(path[0].x, path[0].y, path[1].x, path[1].y);
+        if (_slide)
+            CacheSlide(path[0], path[1]);
     }
 
     void FixedUpdate()
     {
-        if (!_moving || _path == null)
+        if (!_moving || _path == null || _slide)
             return;
 
         _moveTime += Time.fixedDeltaTime;
@@ -603,25 +623,100 @@ public class BoardGrid : MonoBehaviour
             return;
         }
 
+        ArriveCurrentStep();
+    }
+
+    void TickSlide(float dt)
+    {
+        if (!_moving || _path == null)
+            return;
+
+        if (_pathIndex >= _path.Count - 1)
+        {
+            FinishMove();
+            return;
+        }
+
+        _moveTime += dt;
+        float duration = Mathf.Max(0.02f, stepSeconds);
+        float t = Mathf.Clamp01(_moveTime / duration);
+        Vector2Int from = _path[_pathIndex];
+        CellContent piece = cellContent[from.x, from.y];
+        if (piece != null && piece.instance != null)
+            piece.instance.transform.localPosition = Vector3.Lerp(_slideFrom, _slideTo, t);
+
+        if (t < 1f)
+            return;
+
+        _moveTime -= duration;
+        ArriveCurrentStep();
+    }
+
+    void ArriveCurrentStep()
+    {
         Vector2Int from = _path[_pathIndex];
         Vector2Int to = _path[_pathIndex + 1];
         CellContent piece = cellContent[from.x, from.y];
         cellContent[from.x, from.y] = null;
         cellContent[to.x, to.y] = piece;
 
-        if (piece != null && piece.instance != null && TryGetPieceLocal(to.x, to.y, out Vector3 localCenter))
-            piece.instance.transform.localPosition = localCenter;
+        if (piece != null && piece.instance != null)
+        {
+            if (TryGetPieceLocal(to.x, to.y, out Vector3 localCenter))
+                piece.instance.transform.localPosition = localCenter;
+            ApplyPieceOrder(piece.instance, to.x, to.y);
+        }
 
         _pathIndex++;
 
         if (_pathIndex >= _path.Count - 1)
+        {
             FinishMove();
+            return;
+        }
+
+        BeginPieceStep(_path[_pathIndex].x, _path[_pathIndex].y, _path[_pathIndex + 1].x, _path[_pathIndex + 1].y);
+        if (_slide)
+            CacheSlide(_path[_pathIndex], _path[_pathIndex + 1]);
+    }
+
+    bool PieceHasAnimator(int col, int row)
+    {
+        if (cellContent == null || col < 0 || row < 0 || col >= columns || row >= rows)
+            return false;
+
+        CellContent content = cellContent[col, row];
+        if (content == null || content.instance == null)
+            return false;
+
+        return content.instance.GetComponentInChildren<Animator>(true) != null;
+    }
+
+    void CacheSlide(Vector2Int from, Vector2Int to)
+    {
+        CellContent content = cellContent[from.x, from.y];
+        if (content != null && content.instance != null)
+            _slideFrom = content.instance.transform.localPosition;
+        else if (TryGetPieceLocal(from.x, from.y, out Vector3 fromLocal))
+            _slideFrom = fromLocal;
+
+        if (TryGetPieceLocal(to.x, to.y, out Vector3 toLocal))
+            _slideTo = toLocal;
+    }
+
+    protected virtual void BeginPieceStep(int fromCol, int fromRow, int toCol, int toRow)
+    {
+    }
+
+    protected virtual void EndPieceMove(GameObject piece)
+    {
     }
 
     void FinishMove()
     {
         Vector2Int end = _path[_path.Count - 1];
         _moving = false;
+        _slide = false;
         _path = null;
         _command = CommandMode.None;
         _pieceSelected = true;
@@ -629,6 +724,13 @@ public class BoardGrid : MonoBehaviour
         _selectedRow = end.y;
         ClearPathArrow();
         ShowMark(_selectedCol, _selectedRow, pieceClickColor);
+
+        CellContent arrived = cellContent[end.x, end.y];
+        if (arrived == null)
+            return;
+
+        ApplyPieceOrder(arrived.instance, end.x, end.y);
+        EndPieceMove(arrived.instance);
     }
 
     void UpdatePathArrow(bool inside, int col, int row)
