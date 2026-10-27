@@ -47,6 +47,10 @@ public class Enemy : MonoBehaviour
         if (!StillMyTurn())
             yield break;
 
+        if (CellOf(board, _role, out int selfCol, out int selfRow)
+            && CellOf(board, player, out playerCol, out playerRow))
+            board.FaceToward(selfCol, selfRow, playerCol, playerRow);
+
         board.HighlightRole(_role);
         bool attacked = CellOf(board, player, out playerCol, out playerRow)
             && board.TryAttack(playerCol, playerRow);

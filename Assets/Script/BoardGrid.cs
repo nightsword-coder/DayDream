@@ -87,6 +87,7 @@ public class BoardGrid : MonoBehaviour
 
     bool _moving;
     bool _slide;
+    Role _movingRole;
     List<Vector2Int> _path;
     int _pathIndex;
     float _moveTime;
@@ -227,6 +228,8 @@ public class BoardGrid : MonoBehaviour
 
         if (_command == CommandMode.Attack && _pieceSelected && CanAttack() && InAttackRange(col, row))
         {
+            if (!MouseOnCurrentPiece())
+                return;
             if (occupied)
                 ApplyAttack(col, row);
             EndAttack();
@@ -236,19 +239,35 @@ public class BoardGrid : MonoBehaviour
         if (occupied)
         {
             Role role = RoleAt(col, row);
-            if (role == null || !CanControl(role))
+            if (role != null && CanControl(role))
+            {
+                SelectPiece(col, row);
                 return;
-            SelectPiece(col, row);
-            return;
+            }
         }
 
         if (_command == CommandMode.Move && _pieceSelected)
+        {
+            if (!MouseOnCurrentPiece())
+                return;
             TryBeginMove(col, row);
+            return;
+        }
+
+        TryFaceCurrentPiece(col, row);
     }
 
     public bool HasHighlightedPiece => _pieceSelected;
 
-    public Role SelectedRole => _pieceSelected ? RoleAt(_selectedCol, _selectedRow) : null;
+    public Role SelectedRole
+    {
+        get
+        {
+            if (_moving && _movingRole != null)
+                return _movingRole;
+            return _pieceSelected ? RoleAt(_selectedCol, _selectedRow) : null;
+        }
+    }
 
     public void HighlightRole(Role role)
     {
@@ -341,15 +360,46 @@ public class BoardGrid : MonoBehaviour
 
     bool CanControl(Role role)
     {
-        if (role.GetComponent<Enemy>() == null)
-            return true;
+        return MouseOnRole(role);
+    }
 
+    bool MouseOnCurrentPiece()
+    {
+        if (!_pieceSelected)
+            return false;
+        return MouseOnRole(RoleAt(_selectedCol, _selectedRow));
+    }
+
+    bool MouseOnRole(Role role)
+    {
         BattleManager battle = BattleManager.Instance;
         if (battle == null)
             return true;
+        return role != null && battle.Current == role;
+    }
 
-        Role current = battle.Current;
-        return current != null && current.GetComponent<Enemy>() != null;
+    void TryFaceCurrentPiece(int col, int row)
+    {
+        if (!_pieceSelected || _moving || _command != CommandMode.None)
+            return;
+        if (!MouseOnCurrentPiece())
+            return;
+
+        Role role = RoleAt(_selectedCol, _selectedRow);
+        if (role == null || role.GetComponent<Enemy>() != null)
+            return;
+
+        TrySetIdleFacing(_selectedCol, _selectedRow, col, row);
+    }
+
+    public bool FaceToward(int fromCol, int fromRow, int toCol, int toRow)
+    {
+        return TrySetIdleFacing(fromCol, fromRow, toCol, toRow);
+    }
+
+    protected virtual bool TrySetIdleFacing(int fromCol, int fromRow, int toCol, int toRow)
+    {
+        return false;
     }
 
     void SelectPiece(int col, int row)
@@ -593,6 +643,7 @@ public class BoardGrid : MonoBehaviour
         _moveTime = 0f;
         _moving = true;
         _slide = false;
+        _movingRole = path.Count > 0 ? RoleAt(path[0].x, path[0].y) : null;
         if (BattleManager.Instance != null)
             BattleManager.Instance.UseMove();
         ClearMoveRange();
@@ -717,6 +768,7 @@ public class BoardGrid : MonoBehaviour
         Vector2Int end = _path[_path.Count - 1];
         _moving = false;
         _slide = false;
+        _movingRole = null;
         _path = null;
         _command = CommandMode.None;
         _pieceSelected = true;

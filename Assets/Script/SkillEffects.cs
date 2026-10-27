@@ -86,7 +86,7 @@ public static class SkillEffects
             enemies.Add(enemy);
         }
 
-        return enemies.Count > 0 && Pay(role, skill);
+        return enemies.Count > 0;
     }
 
     static bool Listed(List<Role> enemies, Role enemy)
@@ -97,11 +97,6 @@ public static class SkillEffects
                 return true;
         }
         return false;
-    }
-
-    static bool Pay(Role role, Skill skill)
-    {
-        return skill != null && role.SpendMana(skill.mana);
     }
 
     static void Apply(Role role, Skill skill, Role enemy)

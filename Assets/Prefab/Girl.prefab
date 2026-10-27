@@ -1135,3 +1135,4 @@ MonoBehaviour:
   range: 1
   poisonSprite: {fileID: 21300000, guid: 6eb620c3006b04ef1837ec9f00d83977, type: 3}
   wetSprite: {fileID: 21300000, guid: 5d467d61fc23f497b873aa234a61e649, type: 3}
+  roleName: Seraphina

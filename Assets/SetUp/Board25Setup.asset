@@ -30,6 +30,12 @@ MonoBehaviour:
   - col: 7
     row: 0
     prefab: {fileID: 3806637548469135845, guid: 9ddfa74114255486ba15f9420c3aae87, type: 3}
-  - col: 2
+  - col: 5
+    row: 3
+    prefab: {fileID: 560447234818239340, guid: 16653fd9ca806459897be4078a6dc1b0, type: 3}
+  - col: 0
     row: 3
     prefab: {fileID: 7398706922586940775, guid: 947558226263d4dbfa82891473958e04, type: 3}
+  - col: 3
+    row: 7
+    prefab: {fileID: 560447234818239340, guid: 16653fd9ca806459897be4078a6dc1b0, type: 3}

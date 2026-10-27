@@ -153,8 +153,10 @@ public class ActionSkills : MonoBehaviour
 
     Skill SkillAt(int index)
     {
-        if (index >= 0 && index < skills.Count && skills[index] != null)
+        if (AllSkill.Instance == null && index >= 0 && index < skills.Count && skills[index] != null)
             return skills[index];
+        if (_source == null)
+            _source = EquippedSkill.Instance;
         if (_source == null)
             return null;
         return _source.EquippedAt(index);

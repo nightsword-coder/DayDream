@@ -14,4 +14,7 @@ EditorBuildSettings:
   - enabled: 1
     path: Assets/Scenes/TestFight2D.unity
     guid: abaaeb0d6f2794494acb8cc559633989
+  - enabled: 1
+    path: Assets/Scenes/TestFight2.5D.unity
+    guid: 8e1646f16e74d4911b34de82cd5ebb1d
   m_configObjects: {}

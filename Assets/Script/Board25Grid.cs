@@ -10,9 +10,9 @@ using UnityEngine;
 public class Board25Grid : BoardGrid
 {
     [Header("最下方格子上的角色世界坐标")]
-    public Vector3 bottomPieceWorld = new Vector3(0f, -2f, -1f);
+    public Vector3 bottomPieceWorld = new Vector3(0f, -3f, -1f);
 
-    readonly Vector3 bottomBlockWorld = new Vector3(0f, -2.8f, -1f);
+    readonly Vector3 bottomBlockWorld = new Vector3(0f, -3.8f, -1f);
 
     // board25.png 顶面四角，贴图像素，左下为原点。
     readonly Vector2 nearCorner = new Vector2(749.2f, 372.4f);
@@ -64,6 +64,36 @@ public class Board25Grid : BoardGrid
         if (dy < 0)
             return 4;
         return 0;
+    }
+
+    protected override bool TrySetIdleFacing(int fromCol, int fromRow, int toCol, int toRow)
+    {
+        int facing = IdleFacing(toCol - fromCol, toRow - fromRow);
+        if (facing == 0)
+            return false;
+
+        Animator animator = PieceAnimator(fromCol, fromRow);
+        if (animator == null || !HasParameter(animator, Facing) || !HasParameter(animator, Moving))
+            return false;
+
+        animator.SetInteger(Facing, facing);
+        animator.SetBool(Moving, false);
+        return true;
+    }
+
+    static int IdleFacing(int dx, int dy)
+    {
+        if (dx == 0 && dy == 0)
+            return 0;
+        if (dx < 0 && dy < 0)
+            return 4;
+        if (dx > 0 && dy > 0)
+            return 3;
+        if (dx > 0 && dy < 0)
+            return 1;
+        if (dx < 0 && dy > 0)
+            return 2;
+        return FacingOf(dx, dy);
     }
 
     Animator PieceAnimator(int col, int row)

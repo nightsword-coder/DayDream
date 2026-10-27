@@ -44,3 +44,6 @@ TagManager:
   - name: Chess Piece
     uniqueID: 1852746391
     locked: 0
+  - name: Canvas
+    uniqueID: 2436161811
+    locked: 0

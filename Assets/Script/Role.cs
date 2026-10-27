@@ -15,6 +15,7 @@ public class Role : MonoBehaviour
     public int range = 1;
     public Sprite poisonSprite;
     public Sprite wetSprite;
+    public string roleName;
 
     public int healthMax { get; private set; }
     public int currentMana { get; private set; }
@@ -59,6 +60,8 @@ public class Role : MonoBehaviour
 
     public void PlayHurt()
     {
+        if (General.Instance != null)
+            General.Instance.Refresh(this);
         if (_dying)
             return;
         StopHurt();
@@ -269,6 +272,8 @@ public class Role : MonoBehaviour
     public void RecoverMana()
     {
         currentMana = Mathf.Clamp(currentMana + manaRegen, 0, manaMax);
+        if (General.Instance != null)
+            General.Instance.Refresh(this);
     }
 
     public bool SpendMana(int amount)
@@ -276,6 +281,8 @@ public class Role : MonoBehaviour
         if (amount < 0 || currentMana < amount)
             return false;
         currentMana -= amount;
+        if (General.Instance != null)
+            General.Instance.Refresh(this);
         return true;
     }
 
