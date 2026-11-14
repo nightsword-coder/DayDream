@@ -12,19 +12,12 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 747d987c1c4194f469c1918168f9ffde, type: 3}
   m_Name: lightningskill1
   m_EditorClassIdentifier: 
-  skillName: Thunderstorm's Fury
+  skillName: "\u5954\u96F7\u60CA\u96E8"
   image: {fileID: 21300000, guid: 37e485060259e4815b18f0eea0177b90, type: 3}
   mana: 8
   power: 180
   range: 3
-  effectIds: 0000000003000000
+  effectIds: 000000000300000004000000
   cells:
   - {x: 0, y: 0}
-  description: 'Thunderstorm''s Fury
-
-    Mana Cost: High
-
-    Damage: Heavy
-
-    Effect:
-    Always critically strikes wet targets.'
+  description: "奔雷惊雨\n魔力消耗：高\n威力：高"

@@ -103,12 +103,12 @@ MonoBehaviour:
   physicalAttack: 2
   magicAttack: 10
   manaMax: 30
-  manaRegen: 5
+  manaRegen: 10
   moveRange: 4
   range: 1
   poisonSprite: {fileID: 21300000, guid: 6eb620c3006b04ef1837ec9f00d83977, type: 3}
   wetSprite: {fileID: 21300000, guid: 5d467d61fc23f497b873aa234a61e649, type: 3}
-  roleName: Seraphina
+  roleName: "\u585E\u62C9\u83F2\u5A1C"
 --- !u!95 &2716248818561221688
 Animator:
   serializedVersion: 5

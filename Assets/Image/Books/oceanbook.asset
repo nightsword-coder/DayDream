@@ -12,9 +12,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 61395e6d91fbe45899b2c0fee34edbd2, type: 3}
   m_Name: oceanbook
   m_EditorClassIdentifier: 
-  bookName: OceanBook
+  bookName: 沧海之书
   sprite: {fileID: 21300000, guid: 3e577a04c50014e0291152b6e9373593, type: 3}
-  description: '  The deep sea speaks not, yet remembers every forgotten name.'
+  description: 深海从不开口。可每一个被遗忘的名字，它都记得。
   skills:
   - {fileID: 11400000, guid: d59cf8187ac0b44a9a8a962c94fd56be, type: 2}
   - {fileID: 11400000, guid: 84c1b15ef7d4f4bbaba2ab6b08a994dc, type: 2}

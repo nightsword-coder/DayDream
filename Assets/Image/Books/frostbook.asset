@@ -12,8 +12,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 61395e6d91fbe45899b2c0fee34edbd2, type: 3}
   m_Name: frostbook
   m_EditorClassIdentifier: 
-  bookName: FrostBook
+  bookName: 冰霜之书
   sprite: {fileID: 21300000, guid: 4a1ab60d47a374dbbbaf4683a65c3ef3, type: 3}
-  description: '  All things fall silent, while frozen secrets slumber on.'
+  description: 万物在这里沉寂下来。被冰封的秘密并不消失，它们只是继续沉睡。
   skills:
   - {fileID: 11400000, guid: 7deff252abd0f47bab514abe17b2399e, type: 2}

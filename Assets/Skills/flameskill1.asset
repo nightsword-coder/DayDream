@@ -12,16 +12,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 747d987c1c4194f469c1918168f9ffde, type: 3}
   m_Name: flameskill1
   m_EditorClassIdentifier: 
-  skillName: Wrath of Fury
+  skillName: 狂暴熔岩
   image: {fileID: 21300000, guid: f9b34db2a82104867b8c27e31435c660, type: 3}
   mana: 8
   power: 180
   range: 3
-  description: 'Wrath of Fury
-
-    Mana Cost: High
-
-    Damage: Heavy
-
-    Effect:
-    Prevents the target from healing.'
+  description: "狂暴熔岩\n魔力消耗：高\n威力：高"

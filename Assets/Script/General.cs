@@ -55,6 +55,21 @@ public class General : MonoBehaviour
         Write(role);
     }
 
+    public void ShowFirstPlayer()
+    {
+        BoardGrid grid = board != null ? board : BoardGrid.Instance;
+        if (grid == null || grid.cellContent == null)
+            return;
+
+        Role role = Protagonist(grid);
+        if (role == null)
+            return;
+
+        _shown = role;
+        _opened = true;
+        Write(role);
+    }
+
     static Role Protagonist(BoardGrid grid)
     {
         for (int row = 0; row < grid.rows; row++)

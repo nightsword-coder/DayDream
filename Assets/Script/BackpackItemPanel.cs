@@ -11,7 +11,6 @@ public class BackpackItemPanel : MonoBehaviour
     public TMP_Text nameText;
     public TMP_Text descriptionText;
 
-    readonly List<Image> _slots = new List<Image>();
     Book _current;
 
     void Awake()
@@ -19,38 +18,19 @@ public class BackpackItemPanel : MonoBehaviour
         if (itemPanel != null)
             itemPanel.SetActive(false);
 
-        if (backpack == null || backpack.itemRoot == null)
-            return;
-
-        Transform items = backpack.itemRoot;
-        for (int r = 0; r < items.childCount; r++)
-        {
-            Transform row = items.GetChild(r);
-            for (int i = 0; i < row.childCount; i++)
-            {
-                Image image = row.GetChild(i).GetComponent<Image>();
-                if (image != null)
-                    _slots.Add(image);
-            }
-        }
+        if (backpack != null)
+            backpack.BindSlotClicks(Show);
     }
 
     void Update()
     {
         if (!Input.GetMouseButtonDown(0))
             return;
-
-        if (itemPanel != null && itemPanel.activeSelf)
-        {
-            RectTransform panelRect = itemPanel.transform as RectTransform;
-            if (!Inside(panelRect))
-                itemPanel.SetActive(false);
+        if (itemPanel == null || !itemPanel.activeSelf)
             return;
-        }
 
-        int index = SlotUnderMouse();
-        if (index >= 0)
-            Show(index);
+        if (!Inside(itemPanel.transform as RectTransform))
+            itemPanel.SetActive(false);
     }
 
     void Show(int index)
@@ -161,20 +141,6 @@ public class BackpackItemPanel : MonoBehaviour
             }
         }
         return null;
-    }
-
-    int SlotUnderMouse()
-    {
-        Camera camera = UiCamera();
-        for (int i = 0; i < _slots.Count; i++)
-        {
-            Image slot = _slots[i];
-            if (slot == null || !slot.gameObject.activeInHierarchy)
-                continue;
-            if (Inside(slot.rectTransform, camera))
-                return i;
-        }
-        return -1;
     }
 
     bool Inside(RectTransform rect)

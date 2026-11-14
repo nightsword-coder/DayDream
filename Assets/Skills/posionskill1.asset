@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 747d987c1c4194f469c1918168f9ffde, type: 3}
   m_Name: posionskill1
   m_EditorClassIdentifier: 
-  skillName: defaulename
+  skillName: "\u9EC4\u6CC9\u6BD2\u996E"
   image: {fileID: 21300000, guid: 46f7b86a838584ae98e951d85499b835, type: 3}
   mana: 8
   power: 180
@@ -20,4 +20,4 @@ MonoBehaviour:
   effectIds: 0100000000000000
   cells:
   - {x: 0, y: 0}
-  description: 
+  description: "黄泉毒饮\n魔力消耗：高\n威力：高"

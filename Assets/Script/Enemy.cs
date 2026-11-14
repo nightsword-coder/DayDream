@@ -10,6 +10,7 @@ public class Enemy : MonoBehaviour
 {
     Role _role;
     Coroutine _turn;
+    readonly List<BoardGrid.PlayerInfo> _players = new List<BoardGrid.PlayerInfo>();
 
     void Awake()
     {
@@ -29,8 +30,8 @@ public class Enemy : MonoBehaviour
         if (board == null || _role == null || _role.health <= 0)
             yield break;
 
-        Role player = FindPlayer(board);
-        if (player == null || !CellOf(board, player, out int playerCol, out int playerRow))
+        Role player = FindPlayer(board, out int playerCol, out int playerRow);
+        if (player == null)
         {
             EndIfStillMyTurn();
             yield break;
@@ -96,22 +97,30 @@ public class Enemy : MonoBehaviour
         return BattleManager.Instance != null && BattleManager.Instance.Current == _role;
     }
 
-    static Role FindPlayer(BoardGrid board)
+    Role FindPlayer(BoardGrid board, out int col, out int row)
     {
-        if (board.cellContent == null)
+        col = -1;
+        row = -1;
+        if (!board.TryCellOf(_role, out int selfCol, out int selfRow))
             return null;
 
-        for (int row = 0; row < board.rows; row++)
+        board.CopyPlayers(_players);
+        Role best = null;
+        int bestDist = int.MaxValue;
+        int bestIndex = int.MaxValue;
+        for (int i = 0; i < _players.Count; i++)
         {
-            for (int col = 0; col < board.columns; col++)
-            {
-                Role role = RoleOn(board, col, row);
-                if (role != null && role.GetComponent<Enemy>() == null && role.health > 0)
-                    return role;
-            }
+            BoardGrid.PlayerInfo player = _players[i];
+            int dist = Mathf.Abs(player.col - selfCol) + Mathf.Abs(player.row - selfRow);
+            if (dist > bestDist || (dist == bestDist && player.index >= bestIndex))
+                continue;
+            best = player.role;
+            bestDist = dist;
+            bestIndex = player.index;
+            col = player.col;
+            row = player.row;
         }
-
-        return null;
+        return best;
     }
 
     static bool CellOf(BoardGrid board, Role role, out int col, out int row)

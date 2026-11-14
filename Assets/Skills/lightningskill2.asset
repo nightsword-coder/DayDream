@@ -12,10 +12,12 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 747d987c1c4194f469c1918168f9ffde, type: 3}
   m_Name: lightningskill2
   m_EditorClassIdentifier: 
-  skillName: defaultname
+  skillName: "\u795E\u9704\u82CD\u96F7"
   image: {fileID: 21300000, guid: ca38da25e5436437d88a277b6f55f639, type: 3}
   mana: 5
   power: 100
   range: 3
-  effectIds: []
-  description: default description
+  effectIds: 
+  cells:
+  - {x: 0, y: 0}
+  description: "神霄苍雷\n魔力消耗：中\n威力：中"

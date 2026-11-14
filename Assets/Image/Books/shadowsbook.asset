@@ -12,8 +12,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 61395e6d91fbe45899b2c0fee34edbd2, type: 3}
   m_Name: shadowsbook
   m_EditorClassIdentifier: 
-  bookName: ShadowsBook
+  bookName: 暗影之书
   sprite: {fileID: 21300000, guid: f08cda2f1ef2642a894e4ec9f324301d, type: 3}
-  description: '  Darkness is not emptiness; some secrets emerge only in shadow.'
+  description: 黑暗并不是空无。有些秘密畏光，只肯在影子里慢慢浮现。
   skills:
   - {fileID: 11400000, guid: 6516fa777cac64ca0ba44b42d21dd109, type: 2}

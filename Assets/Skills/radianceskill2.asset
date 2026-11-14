@@ -12,9 +12,12 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 747d987c1c4194f469c1918168f9ffde, type: 3}
   m_Name: radianceskill2
   m_EditorClassIdentifier: 
-  skillName: defaultname
+  skillName: "\u5723\u8A00\u7948\u7977"
   image: {fileID: 21300000, guid: dc4738322b9c64d028c435ffda29cde3, type: 3}
   mana: 5
   power: 100
   range: 3
-  description: default description
+  effectIds: 
+  cells:
+  - {x: 0, y: 0}
+  description: "圣言祈祷\n魔力消耗：中\n威力：中"

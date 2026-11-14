@@ -66,9 +66,18 @@ public class Board25Grid : BoardGrid
         return 0;
     }
 
+    public override bool FaceToward(int fromCol, int fromRow, int toCol, int toRow)
+    {
+        return ApplyIdleFacing(fromCol, fromRow, ConeFacing(toCol - fromCol, toRow - fromRow));
+    }
+
     protected override bool TrySetIdleFacing(int fromCol, int fromRow, int toCol, int toRow)
     {
-        int facing = IdleFacing(toCol - fromCol, toRow - fromRow);
+        return ApplyIdleFacing(fromCol, fromRow, IdleFacing(toCol - fromCol, toRow - fromRow));
+    }
+
+    bool ApplyIdleFacing(int fromCol, int fromRow, int facing)
+    {
         if (facing == 0)
             return false;
 
@@ -79,6 +88,24 @@ public class Board25Grid : BoardGrid
         animator.SetInteger(Facing, facing);
         animator.SetBool(Moving, false);
         return true;
+    }
+
+    // 以敌人为原点，用和 y=x、y=-x+8 相同的两条对角线切开。
+    // y 更大的三角是 tenidle，y 更小是 fouridle，x 更大是 twoidle，x 更小是 eightidle。
+    // 正好落在对角线上时归到左右两个朝向。
+    static int ConeFacing(int dx, int dy)
+    {
+        if (dx == 0 && dy == 0)
+            return 0;
+
+        int ax = Mathf.Abs(dx);
+        if (dy > ax)
+            return 3;
+        if (dy < -ax)
+            return 4;
+        if (dx > 0)
+            return 1;
+        return 2;
     }
 
     static int IdleFacing(int dx, int dy)

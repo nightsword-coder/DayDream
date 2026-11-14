@@ -12,8 +12,7 @@ public static class SkillEffects
         Poison,
         Wet,
         DoubleWet,
-        null,
-        null,
+        Lightning,
     };
 
     public static SkillFx FunctionAt(int id)
@@ -62,6 +61,68 @@ public static class SkillEffects
     static IEnumerator DoubleWet(Role role, BoardGrid board, int col, int row)
     {
         yield break;
+    }
+
+    static IEnumerator Lightning(Role role, BoardGrid board, int col, int row)
+    {
+        if (!Targets(role, board, col, row, out _, out List<Role> enemies))
+            yield break;
+
+        GameObject prefab = SkillExecutor.Instance.lightningPrefab;
+        for (int i = 0; i < enemies.Count; i++)
+        {
+            Role enemy = enemies[i];
+            if (enemy == null)
+                continue;
+
+            SkillExecutor.Instance.RememberTarget(enemy);
+            if (prefab == null || !board.TryCellOf(enemy, out int enemyCol, out int enemyRow))
+                continue;
+
+            Vector3 at = board.GetCellCenter(enemyCol, enemyRow);
+            at.y += 3f;
+            at.z = enemy.transform.position.z;
+            GameObject fx = Object.Instantiate(prefab, at, Quaternion.identity);
+            Object.Destroy(fx, LifeSeconds(fx));
+        }
+
+        Finish();
+    }
+
+    static float LifeSeconds(GameObject fx)
+    {
+        Animator animator = fx.GetComponentInChildren<Animator>(true);
+        if (animator != null && animator.runtimeAnimatorController != null)
+        {
+            AnimationClip[] clips = animator.runtimeAnimatorController.animationClips;
+            float longest = 0f;
+            for (int i = 0; i < clips.Length; i++)
+            {
+                if (clips[i] != null && clips[i].length > longest)
+                    longest = clips[i].length;
+            }
+            if (longest > 0f)
+                return longest;
+        }
+
+        Animation legacy = fx.GetComponentInChildren<Animation>(true);
+        if (legacy != null && legacy.clip != null && legacy.clip.length > 0f)
+            return legacy.clip.length;
+
+        Renderer renderer = fx.GetComponentInChildren<Renderer>(true);
+        if (renderer != null)
+        {
+            Material material = renderer.sharedMaterial;
+            if (material != null && material.HasProperty("_Fllipbook_Columns") && material.HasProperty("_Fllipbook_Rows"))
+            {
+                float tiles = material.GetFloat("_Fllipbook_Columns") * material.GetFloat("_Fllipbook_Rows");
+                float speed = material.HasProperty("_Fllipbook_speed") ? material.GetFloat("_Fllipbook_speed") : 1f;
+                if (tiles > 0f && speed > 0f)
+                    return tiles / (3f * speed);
+            }
+        }
+
+        return 10f * Mathf.Max(Time.deltaTime, 1f / 60f);
     }
 
     static bool Targets(Role role, BoardGrid board, int col, int row, out Skill skill, out List<Role> enemies)

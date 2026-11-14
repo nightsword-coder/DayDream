@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.Events;
 using UnityEngine.Serialization;
 using UnityEngine.UI;
 
@@ -29,10 +30,32 @@ public class Backpack : MonoBehaviour
                 Image image = row.GetChild(i).GetComponent<Image>();
                 if (image == null)
                     continue;
+                image.raycastTarget = true;
+                EnsureButton(image);
                 image.gameObject.SetActive(false);
                 _slots.Add(image);
             }
         }
+    }
+
+    public void BindSlotClicks(UnityAction<int> onSlot)
+    {
+        CollectSlots();
+        for (int i = 0; i < _slots.Count; i++)
+        {
+            int index = i;
+            Button button = EnsureButton(_slots[i]);
+            button.onClick.AddListener(() => onSlot(index));
+        }
+    }
+
+    static Button EnsureButton(Image image)
+    {
+        Button button = image.GetComponent<Button>();
+        if (button == null)
+            button = image.gameObject.AddComponent<Button>();
+        button.targetGraphic = image;
+        return button;
     }
 
     public void Place(Book book)

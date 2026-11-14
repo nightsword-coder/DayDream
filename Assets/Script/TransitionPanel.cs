@@ -40,10 +40,12 @@ public class TransitionPanel : MonoBehaviour
             rightImage = transform.Find("rightimage") as RectTransform;
         if (circleImage == null)
             circleImage = transform.Find("circleimage") as RectTransform;
+        SetSideScale(Vector3.one);
         Apply(0f);
         _group = GetComponent<CanvasGroup>();
         if (_group == null)
             _group = gameObject.AddComponent<CanvasGroup>();
+        _group.alpha = 0f;
         SetBlocking(false);
 
         Canvas canvas = GetComponentInParent<Canvas>();
@@ -141,8 +143,17 @@ public class TransitionPanel : MonoBehaviour
     {
         if (_group == null)
             return;
+        _group.alpha = blocking ? 1f : 0f;
         _group.blocksRaycasts = blocking;
         _group.interactable = blocking;
+    }
+
+    void SetSideScale(Vector3 scale)
+    {
+        if (leftImage != null)
+            leftImage.localScale = scale;
+        if (rightImage != null)
+            rightImage.localScale = scale;
     }
 
     void Apply(float t)

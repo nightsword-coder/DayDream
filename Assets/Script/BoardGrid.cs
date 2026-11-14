@@ -118,6 +118,14 @@ public class BoardGrid : MonoBehaviour
         public GameObject instance;
     }
 
+    public struct PlayerInfo
+    {
+        public Role role;
+        public int col;
+        public int row;
+        public int index;
+    }
+
     void Awake()
     {
         Instance = this;
@@ -392,7 +400,7 @@ public class BoardGrid : MonoBehaviour
         TrySetIdleFacing(_selectedCol, _selectedRow, col, row);
     }
 
-    public bool FaceToward(int fromCol, int fromRow, int toCol, int toRow)
+    public virtual bool FaceToward(int fromCol, int fromRow, int toCol, int toRow)
     {
         return TrySetIdleFacing(fromCol, fromRow, toCol, toRow);
     }
@@ -467,6 +475,25 @@ public class BoardGrid : MonoBehaviour
         }
 
         return false;
+    }
+
+    public void CopyPlayers(List<PlayerInfo> into)
+    {
+        into.Clear();
+        if (cellContent == null)
+            return;
+
+        int index = 0;
+        for (int row = 0; row < rows; row++)
+        {
+            for (int col = 0; col < columns; col++, index++)
+            {
+                Role role = RoleAt(col, row);
+                if (role == null || role.health <= 0 || role.GetComponent<Enemy>() != null)
+                    continue;
+                into.Add(new PlayerInfo { role = role, col = col, row = row, index = index });
+            }
+        }
     }
 
     Role RoleAt(int col, int row)

@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 747d987c1c4194f469c1918168f9ffde, type: 3}
   m_Name: oceanskill1
   m_EditorClassIdentifier: 
-  skillName: defaultname
+  skillName: "\u5929\u6D2A"
   image: {fileID: 21300000, guid: 4fe50d25329264fc1997752a3fd8760f, type: 3}
   mana: 5
   power: 30
@@ -20,4 +20,4 @@ MonoBehaviour:
   effectIds: 0200000000000000
   cells:
   - {x: 0, y: 0}
-  description: default description
+  description: "天洪\n魔力消耗：中\n威力：低"

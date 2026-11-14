@@ -163,8 +163,13 @@ public class BattleManager : MonoBehaviour
         for (int i = 0; i < _order.Count; i++)
         {
             Role role = _order[i];
-            if (role != null && role.health <= 0)
-                role.PlayDeath();
+            if (role == null || role.health > 0)
+                continue;
+
+            bool wasPlaying = role.PlayingDeath;
+            role.PlayDeath();
+            if (!wasPlaying && role.PlayingDeath && IsEnemy(role) && General.Instance != null)
+                General.Instance.ShowFirstPlayer();
         }
     }
 

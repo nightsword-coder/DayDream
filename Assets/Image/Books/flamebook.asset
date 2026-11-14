@@ -12,9 +12,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 61395e6d91fbe45899b2c0fee34edbd2, type: 3}
   m_Name: flamebook
   m_EditorClassIdentifier: 
-  bookName: FlameBook
+  bookName: 烈焰之书
   sprite: {fileID: 21300000, guid: 18c8c9d614629458b8bdca44a6ffd372, type: 3}
-  description: '  The flame never dies; within its embers lies an unyielding will.'
+  description: 火焰从不真正死去。余烬深处藏着一份不肯弯折的意志，安静地等着下一次燃烧。
   skills:
   - {fileID: 11400000, guid: 7b9660347dac64c1e94cd81a02eec1fe, type: 2}
   - {fileID: 11400000, guid: 644357818c3b4405b90048e2a213a426, type: 2}
