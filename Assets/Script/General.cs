@@ -55,6 +55,16 @@ public class General : MonoBehaviour
         Write(role);
     }
 
+    public void Show(Role role)
+    {
+        if (role == null)
+            return;
+
+        _shown = role;
+        _opened = true;
+        Write(role);
+    }
+
     public void ShowFirstPlayer()
     {
         BoardGrid grid = board != null ? board : BoardGrid.Instance;

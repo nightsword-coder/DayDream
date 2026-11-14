@@ -429,7 +429,9 @@ public class BoardGrid : MonoBehaviour
         if (attacker == null || target == null)
             return;
 
-        int damage = attacker.physicalAttack + attacker.magicAttack;
+        int damage = Mathf.Max(attacker.physicalAttack, attacker.magicAttack);
+        if (SkillEffects.Behind(attacker, this, target))
+            damage = damage * 125 / 100;
         target.health -= damage;
         target.PlayHurt();
         DamagePopup.Spawn(target, damage);

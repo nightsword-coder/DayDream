@@ -6,6 +6,8 @@ public delegate IEnumerator SkillFx(Role role, BoardGrid board, int col, int row
 
 public static class SkillEffects
 {
+    static readonly int Facing = Animator.StringToHash("facing");
+
     static readonly SkillFx[] Effects =
     {
         Hit,
@@ -28,7 +30,7 @@ public static class SkillEffects
             yield break;
 
         for (int i = 0; i < enemies.Count; i++)
-            Apply(role, skill, enemies[i]);
+            Apply(role, board, skill, enemies[i]);
         Finish();
     }
 
@@ -160,14 +162,63 @@ public static class SkillEffects
         return false;
     }
 
-    static void Apply(Role role, Skill skill, Role enemy)
+    static void Apply(Role role, BoardGrid board, Skill skill, Role enemy)
     {
         int power = skill.power;
         if (enemy.wetTurns > 0 && HasEffect(skill, 3))
             power *= 2;
         int damage = role.magicAttack * power / 100;
+        if (Behind(role, board, enemy))
+            damage = damage * 125 / 100;
         SkillExecutor.Instance.RememberTarget(enemy);
         enemy.TakeSkillDamage(damage);
+    }
+
+    public static bool Behind(Role role, BoardGrid board, Role target)
+    {
+        if (board == null || role == null || target == null)
+            return false;
+        if (!board.TryCellOf(role, out int roleCol, out int roleRow))
+            return false;
+        if (!board.TryCellOf(target, out int targetCol, out int targetRow))
+            return false;
+
+        int roleFacing = ReadFacing(role);
+        int targetFacing = ReadFacing(target);
+        return DirectlyBehind(roleCol, roleRow, roleFacing, targetCol, targetRow, targetFacing);
+    }
+
+    static bool DirectlyBehind(int roleCol, int roleRow, int roleFacing, int targetCol, int targetRow, int targetFacing)
+    {
+        int col = roleCol - targetCol;
+        int row = roleRow - targetRow;
+        if (col == 0 && row == 0)
+            return false;
+
+        if (targetFacing == 1)
+            return row == 0 && col < 0;
+        if (targetFacing == 2)
+            return row == 0 && col > 0;
+        if (targetFacing == 3)
+            return col == 0 && row < 0;
+        if (targetFacing == 4)
+            return col == 0 && row > 0;
+        return false;
+    }
+
+    static int ReadFacing(Role role)
+    {
+        Animator animator = role.GetComponentInChildren<Animator>(true);
+        if (animator == null)
+            return 0;
+
+        for (int i = 0; i < animator.parameterCount; i++)
+        {
+            AnimatorControllerParameter parameter = animator.GetParameter(i);
+            if (parameter.nameHash == Facing && parameter.type == AnimatorControllerParameterType.Int)
+                return animator.GetInteger(Facing);
+        }
+        return 0;
     }
 
     static bool HasEffect(Skill skill, int id)

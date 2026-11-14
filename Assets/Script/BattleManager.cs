@@ -147,6 +147,8 @@ public class BattleManager : MonoBehaviour
                 CanMove = true;
                 CanAttack = true;
                 BoardGrid.Instance.HighlightRole(role);
+                if (General.Instance != null)
+                    General.Instance.Show(role);
                 Enemy enemy = role.GetComponent<Enemy>();
                 if (enemy != null)
                     enemy.Act();
