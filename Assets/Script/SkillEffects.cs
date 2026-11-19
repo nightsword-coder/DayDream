@@ -1,5 +1,4 @@
 using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
 
 public delegate IEnumerator SkillFx(Role role, BoardGrid board, int col, int row);
@@ -10,11 +9,16 @@ public static class SkillEffects
 
     static readonly SkillFx[] Effects =
     {
-        Hit,
-        Poison,
-        Wet,
-        DoubleWet,
-        Lightning,
+        Hit,        //0基础攻击
+        Poison,     //1中毒
+        Wet,        //2潮湿
+        DoubleWet,  //3潮湿必定暴击
+        Lightning,  //4特效
+        FaceAway,   //5使对方背向
+        Heal,       //6按威力治疗
+        Push,       //7击退10格
+        Chain,      //8闪电链
+        HealSelf,   //9按百分比治疗自己
     };
 
     public static SkillFx FunctionAt(int id)
@@ -26,36 +30,47 @@ public static class SkillEffects
 
     static IEnumerator Hit(Role role, BoardGrid board, int col, int row)
     {
-        if (!Targets(role, board, col, row, out Skill skill, out List<Role> enemies))
+        Skill skill = CurrentSkill;
+        if (!Prepared(board, skill))
             yield break;
 
-        for (int i = 0; i < enemies.Count; i++)
-            Apply(role, board, skill, enemies[i]);
+        for (int i = 0; i < board.TargetCount; i++)
+        {
+            Role enemy = board.TargetAt(i);
+            if (Affects(role, enemy, false))
+                Apply(role, board, skill, enemy);
+        }
         Finish();
     }
 
     static IEnumerator Poison(Role role, BoardGrid board, int col, int row)
     {
-        if (!Targets(role, board, col, row, out _, out List<Role> enemies))
+        if (!Prepared(board, CurrentSkill))
             yield break;
 
-        for (int i = 0; i < enemies.Count; i++)
+        for (int i = 0; i < board.TargetCount; i++)
         {
-            SkillExecutor.Instance.RememberTarget(enemies[i]);
-            enemies[i].ApplyPoison(2);
+            Role enemy = board.TargetAt(i);
+            if (!Affects(role, enemy, false))
+                continue;
+            SkillExecutor.Instance.RememberTarget(enemy);
+            enemy.ApplyPoison(2);
         }
         Finish();
     }
 
     static IEnumerator Wet(Role role, BoardGrid board, int col, int row)
     {
-        if (!Targets(role, board, col, row, out _, out List<Role> enemies))
+        if (!Prepared(board, CurrentSkill))
             yield break;
 
-        for (int i = 0; i < enemies.Count; i++)
+        for (int i = 0; i < board.TargetCount; i++)
         {
-            SkillExecutor.Instance.RememberTarget(enemies[i]);
-            enemies[i].ApplyWet(2);
+            Role enemy = board.TargetAt(i);
+            if (!Affects(role, enemy, false))
+                continue;
+            SkillExecutor.Instance.RememberTarget(enemy);
+            enemy.ApplyWet(2);
         }
         Finish();
     }
@@ -67,14 +82,14 @@ public static class SkillEffects
 
     static IEnumerator Lightning(Role role, BoardGrid board, int col, int row)
     {
-        if (!Targets(role, board, col, row, out _, out List<Role> enemies))
+        if (!Prepared(board, CurrentSkill))
             yield break;
 
         GameObject prefab = SkillExecutor.Instance.lightningPrefab;
-        for (int i = 0; i < enemies.Count; i++)
+        for (int i = 0; i < board.TargetCount; i++)
         {
-            Role enemy = enemies[i];
-            if (enemy == null)
+            Role enemy = board.TargetAt(i);
+            if (!Affects(role, enemy, false))
                 continue;
 
             SkillExecutor.Instance.RememberTarget(enemy);
@@ -89,6 +104,248 @@ public static class SkillEffects
         }
 
         Finish();
+    }
+
+    static IEnumerator FaceAway(Role role, BoardGrid board, int col, int row)
+    {
+        if (!Prepared(board, CurrentSkill))
+            yield break;
+        if (!board.TryCellOf(role, out int casterCol, out int casterRow))
+            yield break;
+
+        for (int i = 0; i < board.TargetCount; i++)
+        {
+            Role enemy = board.TargetAt(i);
+            if (!Affects(role, enemy, false) || !board.TryCellOf(enemy, out int enemyCol, out int enemyRow))
+                continue;
+
+            int dx = enemyCol - casterCol;
+            int dy = enemyRow - casterRow;
+            if (dx == 0 && dy == 0)
+                continue;
+
+            SkillExecutor.Instance.RememberTarget(enemy);
+            board.FaceToward(enemyCol, enemyRow, enemyCol + dx, enemyRow + dy);
+        }
+        Finish();
+    }
+
+    static IEnumerator Heal(Role role, BoardGrid board, int col, int row)
+    {
+        Skill skill = CurrentSkill;
+        if (!Prepared(board, skill))
+            yield break;
+
+        int amount = role.magicAttack * skill.power / 100;
+        for (int i = 0; i < board.TargetCount; i++)
+        {
+            Role enemy = board.TargetAt(i);
+            if (!Affects(role, enemy, true))
+                continue;
+            SkillExecutor.Instance.RememberTarget(enemy);
+            Restore(enemy, amount);
+        }
+        Finish();
+    }
+
+    static IEnumerator Push(Role role, BoardGrid board, int col, int row)
+    {
+        if (!Prepared(board, CurrentSkill))
+            yield break;
+        if (!board.TryCellOf(role, out int casterCol, out int casterRow))
+            yield break;
+
+        int count = board.TargetCount;
+        var stepCol = new int[count];
+        var stepRow = new int[count];
+        var active = new bool[count];
+        for (int i = 0; i < count; i++)
+        {
+            Role enemy = board.TargetAt(i);
+            if (!Affects(role, enemy, false) || !board.TryCellOf(enemy, out int enemyCol, out int enemyRow))
+                continue;
+            if (!AwayStep(casterCol, casterRow, enemyCol, enemyRow, out int pushCol, out int pushRow))
+                continue;
+
+            SkillExecutor.Instance.RememberTarget(enemy);
+            active[i] = true;
+            stepCol[i] = pushCol;
+            stepRow[i] = pushRow;
+        }
+        Finish();
+
+        var stopped = new bool[count];
+        //推动10格
+        for (int step = 0; step < 10; step++)
+        {
+            yield return new WaitForSeconds(0.1f);
+            bool any = false;
+            var moved = new bool[count];
+            for (int n = 0; n < count; n++)
+            {
+                int pick = Farthest(board, casterCol, casterRow, active, stopped, moved);
+                if (pick < 0)
+                    break;
+
+                moved[pick] = true;
+                if (!PushOne(board, board.TargetAt(pick), stepCol[pick], stepRow[pick]))
+                {
+                    stopped[pick] = true;
+                    continue;
+                }
+                any = true;
+            }
+            if (!any)
+                yield break;
+        }
+    }
+
+    static IEnumerator Chain(Role role, BoardGrid board, int col, int row)
+    {
+        Skill skill = CurrentSkill;
+        if (!Prepared(board, skill))
+            yield break;
+
+        for (int i = 0; i < board.TargetCount; i++)
+        {
+            Role enemy = board.TargetAt(i);
+            if (!Affects(role, enemy, false))
+                continue;
+            Role next = NextEnemy(role, board, enemy);
+            if (next == null)
+                continue;
+            Apply(role, board, skill, next);
+        }
+        Finish();
+    }
+
+    static IEnumerator HealSelf(Role role, BoardGrid board, int col, int row)
+    {
+        if (!Prepared(board, CurrentSkill))
+            yield break;
+
+        Restore(role, (role.healthMax + 3) / 4);
+        Finish();
+    }
+
+    static void Restore(Role target, int amount)
+    {
+        if (target == null || amount <= 0 || target.health >= target.healthMax)
+            return;
+
+        int before = target.health;
+        target.health += amount;
+        if (target.health > target.healthMax)
+            target.health = target.healthMax;
+        int gained = target.health - before;
+        if (gained <= 0)
+            return;
+
+        DamagePopup.SpawnHeal(target, gained);
+        if (General.Instance != null)
+            General.Instance.Refresh(target);
+    }
+
+    static bool AwayStep(int casterCol, int casterRow, int targetCol, int targetRow, out int stepCol, out int stepRow)
+    {
+        stepCol = 0;
+        stepRow = 0;
+        int dx = targetCol - casterCol;
+        int dy = targetRow - casterRow;
+        if (dx == 0 && dy == 0)
+            return false;
+
+        if (Mathf.Abs(dx) >= Mathf.Abs(dy))
+            stepCol = dx > 0 ? 1 : -1;
+        else
+            stepRow = dy > 0 ? 1 : -1;
+        return true;
+    }
+
+    static int Farthest(BoardGrid board, int casterCol, int casterRow, bool[] active, bool[] stopped, bool[] moved)
+    {
+        int pick = -1;
+        int best = -1;
+        for (int i = 0; i < active.Length; i++)
+        {
+            if (!active[i] || stopped[i] || moved[i])
+                continue;
+            Role target = board.TargetAt(i);
+            if (target == null || !board.TryCellOf(target, out int col, out int row))
+            {
+                stopped[i] = true;
+                continue;
+            }
+
+            int distance = Mathf.Abs(col - casterCol) + Mathf.Abs(row - casterRow);
+            if (distance <= best)
+                continue;
+            best = distance;
+            pick = i;
+        }
+        return pick;
+    }
+
+    const int CollisionDamage = 5;
+
+    static bool PushOne(BoardGrid board, Role target, int stepCol, int stepRow)
+    {
+        if (target == null || !board.TryCellOf(target, out int col, out int row))
+            return false;
+
+        int nextCol = col + stepCol;
+        int nextRow = row + stepRow;
+        if (nextCol < 0 || nextRow < 0 || nextCol >= board.columns || nextRow >= board.rows)
+        {
+            target.TakeSkillDamage(CollisionDamage);
+            return false;
+        }
+
+        if (board.cellContent[nextCol, nextRow] != null)
+        {
+            Role other = board.RoleInCell(nextCol, nextRow);
+            target.TakeSkillDamage(CollisionDamage);
+            if (other != null && other != target)
+                other.TakeSkillDamage(CollisionDamage);
+            return false;
+        }
+        return board.TryShiftPiece(col, row, nextCol, nextRow);
+    }
+
+    static Role NextEnemy(Role caster, BoardGrid board, Role source)
+    {
+        if (source == null || !board.TryCellOf(source, out int originCol, out int originRow))
+            return null;
+
+        Role found = null;
+        int best = int.MaxValue;
+        for (int row = 0; row < board.rows; row++)
+        {
+            for (int col = 0; col < board.columns; col++)
+            {
+                int distance = Mathf.Abs(col - originCol) + Mathf.Abs(row - originRow);
+                if (distance <= 0 || distance > 2 || distance >= best)
+                    continue;
+
+                Role other = board.RoleInCell(col, row);
+                if (!IsFoe(caster, source, other))
+                    continue;
+
+                best = distance;
+                found = other;
+            }
+        }
+        return found;
+    }
+
+    static bool IsFoe(Role caster, Role source, Role other)
+    {
+        if (other == null || other == caster || other == source || other.health <= 0)
+            return false;
+
+        bool casterIsEnemy = caster.GetComponent<Enemy>() != null;
+        bool otherIsEnemy = other.GetComponent<Enemy>() != null;
+        return casterIsEnemy != otherIsEnemy;
     }
 
     static float LifeSeconds(GameObject fx)
@@ -127,39 +384,24 @@ public static class SkillEffects
         return 10f * Mathf.Max(Time.deltaTime, 1f / 60f);
     }
 
-    static bool Targets(Role role, BoardGrid board, int col, int row, out Skill skill, out List<Role> enemies)
+    static Skill CurrentSkill
     {
-        skill = SkillExecutor.Instance != null ? SkillExecutor.Instance.skill : null;
-        enemies = null;
-        if (role == null || board == null || skill == null)
-            return false;
-        if (!board.TryCellOf(role, out int originCol, out int originRow))
-            return false;
-        if (!skill.InRange(originCol, originRow, col, row))
-            return false;
-
-        var cells = new List<Vector2Int>();
-        skill.CopyCells(col, row, cells);
-        enemies = new List<Role>();
-        for (int i = 0; i < cells.Count; i++)
-        {
-            Role enemy = board.RoleInCell(cells[i].x, cells[i].y);
-            if (enemy == null || enemy == role || Listed(enemies, enemy))
-                continue;
-            enemies.Add(enemy);
-        }
-
-        return enemies.Count > 0;
+        get { return SkillExecutor.Instance != null ? SkillExecutor.Instance.skill : null; }
     }
 
-    static bool Listed(List<Role> enemies, Role enemy)
+    static bool Prepared(BoardGrid board, Skill skill)
     {
-        for (int i = 0; i < enemies.Count; i++)
-        {
-            if (enemies[i] == enemy)
-                return true;
-        }
-        return false;
+        return board != null && skill != null && board.TargetCount > 0;
+    }
+
+    static bool Affects(Role caster, Role target, bool anyone)
+    {
+        if (target == null)
+            return false;
+        if (anyone || target != caster)
+            return true;
+        Skill skill = CurrentSkill;
+        return skill != null && skill.targetSelf;
     }
 
     static void Apply(Role role, BoardGrid board, Skill skill, Role enemy)

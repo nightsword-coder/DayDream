@@ -19,6 +19,7 @@ public class SkillExecutor : MonoBehaviour
     public Skill skill { get; private set; }
 
     readonly List<Coroutine> _routines = new List<Coroutine>();
+    int _running;
     readonly List<Vector2Int> _area = new List<Vector2Int>();
     readonly List<Vector2Int> _cast = new List<Vector2Int>();
     bool _bound;
@@ -39,6 +40,9 @@ public class SkillExecutor : MonoBehaviour
 
     void Update()
     {
+        if (_running > 0)
+            return;
+
         BoardGrid grid = Grid;
         if (!Ready(grid, out Role actor, out Skill selected))
         {
@@ -68,8 +72,11 @@ public class SkillExecutor : MonoBehaviour
     void Cast(Role actor, BoardGrid grid, Skill selected, int col, int row)
     {
         StopEffectRoutines();
-        if (!HasTarget(actor, grid, selected, col, row) || !actor.SpendMana(selected.mana))
+        if (!grid.CollectTargets(actor, selected, col, row) || !actor.SpendMana(selected.mana))
             return;
+
+        if (grid.TryCellOf(actor, out int fromCol, out int fromRow))
+            grid.FaceToward(fromCol, fromRow, col, row);
 
         int[] ids = selected.effectIds;
         if (ids == null || ids.Length == 0)
@@ -80,28 +87,17 @@ public class SkillExecutor : MonoBehaviour
             SkillFx fx = SkillEffects.FunctionAt(ids[i]);
             if (fx == null)
                 continue;
-            _routines.Add(StartCoroutine(fx(actor, grid, col, row)));
+            _routines.Add(StartCoroutine(Run(fx, actor, grid, col, row)));
         }
+
+        grid.ClearSkillMarks();
     }
 
-    static bool HasTarget(Role actor, BoardGrid grid, Skill selected, int col, int row)
+    IEnumerator Run(SkillFx fx, Role actor, BoardGrid grid, int col, int row)
     {
-        if (actor == null || grid == null || selected == null)
-            return false;
-        if (!grid.TryCellOf(actor, out int originCol, out int originRow))
-            return false;
-        if (!selected.InRange(originCol, originRow, col, row))
-            return false;
-
-        var cells = new List<Vector2Int>();
-        selected.CopyCells(col, row, cells);
-        for (int i = 0; i < cells.Count; i++)
-        {
-            Role other = grid.RoleInCell(cells[i].x, cells[i].y);
-            if (other != null && other != actor)
-                return true;
-        }
-        return false;
+        _running++;
+        yield return StartCoroutine(fx(actor, grid, col, row));
+        _running = Mathf.Max(0, _running - 1);
     }
 
     void Paint(BoardGrid grid, Skill selected, Role actor)
@@ -192,6 +188,7 @@ public class SkillExecutor : MonoBehaviour
 
     void StopEffectRoutines()
     {
+        _running = 0;
         for (int i = 0; i < _routines.Count; i++)
         {
             if (_routines[i] != null)

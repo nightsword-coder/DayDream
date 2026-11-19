@@ -15,9 +15,14 @@ MonoBehaviour:
   skillName: "\u5723\u8A00\u7948\u7977"
   image: {fileID: 21300000, guid: dc4738322b9c64d028c435ffda29cde3, type: 3}
   mana: 5
-  power: 100
+  power: 50
   range: 3
-  effectIds: 
+  targetSelf: 1
+  effectIds: 06000000
   cells:
   - {x: 0, y: 0}
-  description: "圣言祈祷\n魔力消耗：中\n威力：中"
+  - {x: -1, y: 0}
+  - {x: 0, y: 1}
+  - {x: 0, y: -1}
+  - {x: 1, y: 0}
+  description: "\u5723\u8A00\u7948\u7977\n\u9B54\u529B\u6D88\u8017\uFF1A\u4E2D\n\u5A01\u529B\uFF1A\u4E2D"

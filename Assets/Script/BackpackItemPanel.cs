@@ -58,27 +58,27 @@ public class BackpackItemPanel : MonoBehaviour
 
     public void LearnAll()
     {
-        if (_current == null || _current.skills == null || AllSkill.Instance == null)
+        if (_current == null || _current.skills == null)
             return;
 
-        for (int i = 0; i < _current.skills.Count; i++)
-            AllSkill.Instance.AddSkill(_current.skills[i]);
+        if (AllSkill.Instance != null)
+        {
+            for (int i = 0; i < _current.skills.Count; i++)
+                AllSkill.Instance.AddSkill(_current.skills[i]);
+        }
+
+        MarkLearned(_current.skills);
     }
 
     void ShowSkills(List<Skill> skills)
     {
-        GameObject panel = FindTomePanel();
-        if (panel == null)
+        Transform content = TomeContent();
+        if (content == null)
         {
             Debug.LogWarning("tomepanel not found");
             return;
         }
 
-        ScrollRect scroll = panel.GetComponentInChildren<ScrollRect>(true);
-        if (scroll == null || scroll.content == null)
-            return;
-
-        Transform content = scroll.content;
         int count = skills != null ? skills.Count : 0;
         for (int i = 0; i < content.childCount; i++)
         {
@@ -99,15 +99,74 @@ public class BackpackItemPanel : MonoBehaviour
             TMP_Text text = FindText(slot);
             if (text != null)
                 text.text = skill.description;
+
+            bool learned = AllSkill.Instance != null && AllSkill.Instance.skills.Contains(skill);
+            SetLearned(slot, learned);
         }
+    }
+
+    void MarkLearned(List<Skill> skills)
+    {
+        Transform content = TomeContent();
+        if (content == null)
+            return;
+
+        int count = skills != null ? skills.Count : 0;
+        for (int i = 0; i < content.childCount && i < count; i++)
+        {
+            if (skills[i] == null)
+                continue;
+            SetLearned(content.GetChild(i), true);
+        }
+    }
+
+    static void SetLearned(Transform slot, bool on)
+    {
+        Transform learned = FindNamed(slot, "learned");
+        if (learned != null)
+            learned.gameObject.SetActive(on);
+    }
+
+    static Transform FindNamed(Transform root, string childName)
+    {
+        for (int i = 0; i < root.childCount; i++)
+        {
+            Transform child = root.GetChild(i);
+            if (string.Equals(child.name, childName, System.StringComparison.OrdinalIgnoreCase))
+                return child;
+            Transform nested = FindNamed(child, childName);
+            if (nested != null)
+                return nested;
+        }
+        return null;
+    }
+
+    Transform TomeContent()
+    {
+        GameObject panel = FindTomePanel();
+        if (panel == null)
+            return null;
+
+        ScrollRect scroll = panel.GetComponentInChildren<ScrollRect>(true);
+        if (scroll == null)
+            return null;
+        return scroll.content;
     }
 
     static Image FindImage(Transform slot)
     {
+        Transform named = FindNamed(slot, "skillimage");
+        if (named != null)
+        {
+            Image image = named.GetComponent<Image>();
+            if (image != null)
+                return image;
+        }
+
         Image[] images = slot.GetComponentsInChildren<Image>(true);
         for (int i = 0; i < images.Length; i++)
         {
-            if (images[i].transform != slot)
+            if (images[i].transform != slot && images[i].transform.name != "learned")
                 return images[i];
         }
         return null;
@@ -115,6 +174,16 @@ public class BackpackItemPanel : MonoBehaviour
 
     static TMP_Text FindText(Transform slot)
     {
+        Transform named = FindNamed(slot, "skilldescription");
+        if (named != null)
+        {
+            TMP_Text namedText = named.GetComponent<TMP_Text>();
+            if (namedText == null)
+                namedText = named.GetComponentInChildren<TMP_Text>(true);
+            if (namedText != null)
+                return namedText;
+        }
+
         TMP_Text[] texts = slot.GetComponentsInChildren<TMP_Text>(true);
         for (int i = 0; i < texts.Length; i++)
         {

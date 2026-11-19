@@ -16,6 +16,7 @@ public class SkillEditor : Editor
         EditorGUILayout.PropertyField(serializedObject.FindProperty("mana"));
         EditorGUILayout.PropertyField(serializedObject.FindProperty("power"));
         EditorGUILayout.PropertyField(serializedObject.FindProperty("range"));
+        EditorGUILayout.PropertyField(serializedObject.FindProperty("targetSelf"), new GUIContent("可以对自己施放"));
         EditorGUILayout.PropertyField(serializedObject.FindProperty("effectIds"));
         EditorGUILayout.PropertyField(serializedObject.FindProperty("description"));
 

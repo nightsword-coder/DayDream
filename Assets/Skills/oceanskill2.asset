@@ -14,10 +14,11 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   skillName: "\u6DA4\u7F6A\u4E4B\u6CC9"
   image: {fileID: 21300000, guid: 4a84ba2aa24374050b230d14ff14f809, type: 3}
-  mana: 5
-  power: 100
-  range: 3
-  effectIds: 
+  mana: 10
+  power: 0
+  range: 0
+  targetSelf: 1
+  effectIds: 09000000
   cells:
   - {x: 0, y: 0}
-  description: "涤罪之泉\n魔力消耗：中\n威力：中"
+  description: "\u6DA4\u7F6A\u4E4B\u6CC9\n\u9B54\u529B\u6D88\u8017\uFF1A\u4E2D\n\u5A01\u529B\uFF1A\u4E2D"

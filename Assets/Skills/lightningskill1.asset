@@ -20,4 +20,4 @@ MonoBehaviour:
   effectIds: 000000000300000004000000
   cells:
   - {x: 0, y: 0}
-  description: "奔雷惊雨\n魔力消耗：高\n威力：高"
+  description: "\u5954\u96F7\u60CA\u96E8\n\u9B54\u529B\u6D88\u8017\uFF1A\u9AD8\n\u5A01\u529B\uFF1A\u9AD8\n\u6548\u679C\uFF1A\u5BF9\u6F6E\u6E7F\u76EE\u6807\u5FC5\u5B9A\u66B4\u51FB"

@@ -12,9 +12,13 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 747d987c1c4194f469c1918168f9ffde, type: 3}
   m_Name: flameskill1
   m_EditorClassIdentifier: 
-  skillName: 狂暴熔岩
+  skillName: "\u72C2\u66B4\u7194\u5CA9"
   image: {fileID: 21300000, guid: f9b34db2a82104867b8c27e31435c660, type: 3}
   mana: 8
   power: 180
   range: 3
-  description: "狂暴熔岩\n魔力消耗：高\n威力：高"
+  targetSelf: 0
+  effectIds: 0000000007000000
+  cells:
+  - {x: 0, y: 0}
+  description: "\u72C2\u66B4\u7194\u5CA9\n\u9B54\u529B\u6D88\u8017\uFF1A\u9AD8\n\u5A01\u529B\uFF1A\u9AD8"

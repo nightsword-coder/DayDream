@@ -43,6 +43,11 @@ public class Role : MonoBehaviour
     StatusView[] _statuses;
     Coroutine _hurt;
     bool _dying;
+    Transform _healthFill;
+    float _healthFillScale = 1f;
+    float _healthFillLeft;
+    float _healthFillWidth;
+    int _shownHealth = int.MinValue;
 
     public bool PlayingDeath { get; private set; }
 
@@ -54,8 +59,50 @@ public class Role : MonoBehaviour
         _scale = transform.localScale;
         healthMax = health;
         currentMana = 0;
+        BindHealthBar();
         BindStatuses();
         RefreshStatusIcons();
+    }
+
+    void LateUpdate()
+    {
+        if (_healthFill == null || health == _shownHealth)
+            return;
+        _shownHealth = health;
+        ApplyHealthFill();
+    }
+
+    void BindHealthBar()
+    {
+        Transform[] children = GetComponentsInChildren<Transform>(true);
+        for (int i = 0; i < children.Length; i++)
+        {
+            Transform fill = children[i];
+            if (fill.name != "HealthBar1")
+                continue;
+            SpriteRenderer sprite = fill.GetComponent<SpriteRenderer>();
+            if (sprite == null || sprite.sprite == null)
+                continue;
+            _healthFill = fill;
+            _healthFillScale = fill.localScale.x;
+            _healthFillWidth = sprite.sprite.bounds.size.x;
+            _healthFillLeft = fill.localPosition.x - _healthFillWidth * _healthFillScale * 0.5f;
+            return;
+        }
+    }
+
+    void ApplyHealthFill()
+    {
+        float ratio = healthMax > 0 ? health / (float)healthMax : 0f;
+        if (ratio < 0f)
+            ratio = 0f;
+        float scale = _healthFillScale * ratio;
+        Vector3 size = _healthFill.localScale;
+        size.x = scale;
+        _healthFill.localScale = size;
+        Vector3 position = _healthFill.localPosition;
+        position.x = _healthFillLeft + _healthFillWidth * scale * 0.5f;
+        _healthFill.localPosition = position;
     }
 
     public void PlayHurt()
@@ -75,6 +122,8 @@ public class Role : MonoBehaviour
         _dying = true;
         PlayingDeath = true;
         StopHurt();
+        if (GetComponent<Enemy>() != null && BoardGrid.Instance != null)
+            BoardGrid.Instance.ClearPiece(this);
         StartCoroutine(Die());
     }
 
@@ -170,7 +219,10 @@ public class Role : MonoBehaviour
         for (int i = 0; i < _statuses.Length; i++)
         {
             var view = new StatusView();
-            Transform child = transform.Find("status" + (i + 1));
+            Transform folder = transform.Find("status");
+            Transform child = folder != null ? folder.Find("status" + (i + 1)) : null;
+            if (child == null)
+                child = transform.Find("status" + (i + 1));
             if (child != null)
             {
                 view.root = child.gameObject;

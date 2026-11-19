@@ -168,10 +168,7 @@ public class BattleManager : MonoBehaviour
             if (role == null || role.health > 0)
                 continue;
 
-            bool wasPlaying = role.PlayingDeath;
             role.PlayDeath();
-            if (!wasPlaying && role.PlayingDeath && IsEnemy(role) && General.Instance != null)
-                General.Instance.ShowFirstPlayer();
         }
     }
 

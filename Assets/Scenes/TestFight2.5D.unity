@@ -1473,6 +1473,7 @@ MonoBehaviour:
   pieceClickColor: {r: 0.62, g: 0.2, b: 1, a: 0.55}
   attackColor: {r: 1, g: 0.2, b: 0.15, a: 0.5}
   attackRange: 2
+  skillCastColor: {r: 0.2, g: 0.95, b: 1, a: 0.75}
   setup: {fileID: 11400000, guid: b48bb4e3801154ab7bd56937d06a75bc, type: 2}
   moveRangeColor: {r: 0.25, g: 0.55, b: 1, a: 0.45}
   stepSeconds: 0.25
@@ -3752,10 +3753,10 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   skills:
-  - {fileID: 11400000, guid: 05b9088e85efe419b9d686c91fd86373, type: 2}
-  - {fileID: 11400000, guid: ede912351958a4f3fb7a341e7122746b, type: 2}
-  - {fileID: 11400000, guid: d59cf8187ac0b44a9a8a962c94fd56be, type: 2}
-  - {fileID: 11400000, guid: 644357818c3b4405b90048e2a213a426, type: 2}
+  - {fileID: 11400000, guid: 7b9660347dac64c1e94cd81a02eec1fe, type: 2}
+  - {fileID: 11400000, guid: 1abd79c012fb142abadee42bf2d2d66b, type: 2}
+  - {fileID: 11400000, guid: d08bf6233f0634af492d3f5737de2875, type: 2}
+  - {fileID: 11400000, guid: 8b25fc9ff533d49c2a87fbba3ff1b6ea, type: 2}
   emptyImage: {fileID: 21300000, guid: 34674021433a04061934ffadb84caae5, type: 3}
 --- !u!1 &1208658966
 GameObject:
@@ -6394,6 +6395,14 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 0}
     m_Modifications:
+    - target: {fileID: 304863934481148070, guid: 16653fd9ca806459897be4078a6dc1b0, type: 3}
+      propertyPath: m_LocalScale.z
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 304863934481148070, guid: 16653fd9ca806459897be4078a6dc1b0, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: -1
+      objectReference: {fileID: 0}
     - target: {fileID: 560447234818239340, guid: 16653fd9ca806459897be4078a6dc1b0, type: 3}
       propertyPath: m_Name
       value: devil2.5
@@ -6564,10 +6573,6 @@ PrefabInstance:
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
       objectReference: {fileID: 0}
-    - target: {fileID: 435464599884937046, guid: 947558226263d4dbfa82891473958e04, type: 3}
-      propertyPath: portrait
-      value: 
-      objectReference: {fileID: 21300000, guid: 2386197e140224f30ab45ecf8f7d5f0f, type: 3}
     - target: {fileID: 7398706922586940775, guid: 947558226263d4dbfa82891473958e04, type: 3}
       propertyPath: m_Name
       value: player2.5

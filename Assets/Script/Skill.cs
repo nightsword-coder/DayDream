@@ -3,7 +3,8 @@ using UnityEngine;
 
 /// <summary>
 /// 一项技能。由书引用，商店和背包看到的是同一份资源。
-/// 施法中心最远是 range 格（曼哈顿距离，不含自己）。默认 3 格。
+/// 施法中心最远是 range 格（曼哈顿距离）。默认 3 格，不含自己。
+/// targetSelf 勾上后，可以点自己所在的格子。
 /// 施法格子相对鼠标展开，可以超出 range。十字因此能打到第 4 格。
 /// 单体留 (0, 0)。十字五格是 (0,0)、(0,1)、(1,0)、(-1,0)、(0,-1)。不填时按单体处理。
 /// </summary>
@@ -36,6 +37,9 @@ public class Skill : ScriptableObject
     [Tooltip("施法中心离角色最远几格，上下左右数。十字等形状可以再向外打到。")]
     public int range = 3;
 
+    [Tooltip("勾选后可以点自己所在的格子，施法范围内的自己也会成为目标。")]
+    public bool targetSelf;
+
     public int[] effectIds;
 
     [Tooltip("相对鼠标的格子。x 向右，y 向上。(0,0) 是鼠标所在格。空着则只施法鼠标那一格。")]
@@ -50,7 +54,23 @@ public class Skill : ScriptableObject
     public bool InRange(int fromCol, int fromRow, int toCol, int toRow)
     {
         int distance = Mathf.Abs(fromCol - toCol) + Mathf.Abs(fromRow - toRow);
-        return distance > 0 && distance <= range;
+        if (distance > range)
+            return false;
+        if (distance == 0)
+            return targetSelf || HealsAnyone();
+        return true;
+    }
+
+    public bool HealsAnyone()
+    {
+        if (effectIds == null)
+            return false;
+        for (int i = 0; i < effectIds.Length; i++)
+        {
+            if (effectIds[i] == 6)
+                return true;
+        }
+        return false;
     }
 
     public void CopyCells(int anchorCol, int anchorRow, List<Vector2Int> into)

@@ -35,6 +35,9 @@ public class BoardGrid : MonoBehaviour
     public Color attackColor = new Color(1f, 0.2f, 0.15f, 0.5f);
     public int attackRange = 2;
 
+    [Header("技能")]
+    public Color skillCastColor = new Color(0.2f, 0.95f, 1f, 0.75f);
+
     [Header("开局")]
     public BoardSetup setup;
 
@@ -429,6 +432,7 @@ public class BoardGrid : MonoBehaviour
         if (attacker == null || target == null)
             return;
 
+        FaceToward(_selectedCol, _selectedRow, col, row);
         int damage = Mathf.Max(attacker.physicalAttack, attacker.magicAttack);
         if (SkillEffects.Behind(attacker, this, target))
             damage = damage * 125 / 100;
@@ -450,6 +454,69 @@ public class BoardGrid : MonoBehaviour
     {
         int distance = Mathf.Abs(col - _selectedCol) + Mathf.Abs(row - _selectedRow);
         return distance > 0 && distance <= attackRange;
+    }
+
+    readonly List<Vector2Int> _targetCells = new List<Vector2Int>();
+    Role[] _targets = new Role[8];
+    int _targetCount;
+
+    public int TargetCount => _targetCount;
+
+    public Role TargetAt(int index)
+    {
+        return _targets[index];
+    }
+
+    public bool CollectTargets(Role caster, Skill skill, int col, int row)
+    {
+        _targetCount = 0;
+        if (caster == null || skill == null || cellContent == null)
+            return false;
+        if (!TryCellOf(caster, out int originCol, out int originRow))
+            return false;
+        if (!skill.InRange(originCol, originRow, col, row))
+            return false;
+
+        skill.CopyCells(col, row, _targetCells);
+        bool usable = false;
+        for (int i = 0; i < _targetCells.Count; i++)
+        {
+            int cellCol = _targetCells[i].x;
+            int cellRow = _targetCells[i].y;
+            if (!InBoard(cellCol, cellRow))
+                continue;
+
+            Role target = RoleInCell(cellCol, cellRow);
+            if (target == null || ContainsTarget(target))
+                continue;
+
+            AddTarget(target);
+            if (target != caster || skill.targetSelf || skill.HealsAnyone())
+                usable = true;
+        }
+        return usable;
+    }
+
+    bool ContainsTarget(Role role)
+    {
+        for (int i = 0; i < _targetCount; i++)
+        {
+            if (_targets[i] == role)
+                return true;
+        }
+        return false;
+    }
+
+    void AddTarget(Role role)
+    {
+        if (_targetCount >= _targets.Length)
+        {
+            var grown = new Role[_targets.Length * 2];
+            for (int i = 0; i < _targets.Length; i++)
+                grown[i] = _targets[i];
+            _targets = grown;
+        }
+        _targets[_targetCount++] = role;
     }
 
     public Role RoleInCell(int col, int row)
@@ -477,6 +544,42 @@ public class BoardGrid : MonoBehaviour
         }
 
         return false;
+    }
+
+    public void ClearPiece(Role role)
+    {
+        if (!TryCellOf(role, out int col, out int row))
+            return;
+        cellContent[col, row] = null;
+    }
+
+    public bool TryShiftPiece(int fromCol, int fromRow, int toCol, int toRow)
+    {
+        if (!InBoard(fromCol, fromRow) || !InBoard(toCol, toRow))
+            return false;
+        if (fromCol == toCol && fromRow == toRow)
+            return false;
+
+        CellContent piece = cellContent[fromCol, fromRow];
+        if (piece == null || cellContent[toCol, toRow] != null)
+            return false;
+
+        cellContent[fromCol, fromRow] = null;
+        cellContent[toCol, toRow] = piece;
+        if (piece.instance != null)
+        {
+            if (TryGetPieceLocal(toCol, toRow, out Vector3 local))
+                piece.instance.transform.localPosition = local;
+            ApplyPieceOrder(piece.instance, toCol, toRow);
+        }
+
+        if (_pieceSelected && _selectedCol == fromCol && _selectedRow == fromRow)
+        {
+            _selectedCol = toCol;
+            _selectedRow = toRow;
+            ShowMark(toCol, toRow, pieceClickColor);
+        }
+        return true;
     }
 
     public void CopyPlayers(List<PlayerInfo> into)
@@ -606,7 +709,7 @@ public class BoardGrid : MonoBehaviour
     {
         _skillUsed = 0;
         StampSkillMarks(rangeCells, attackColor);
-        StampSkillMarks(castCells, attackColor);
+        StampSkillMarks(castCells, skillCastColor);
 
         for (int i = _skillUsed; i < _skillMarks.Count; i++)
             _skillMarks[i].enabled = false;

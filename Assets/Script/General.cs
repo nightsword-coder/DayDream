@@ -1,7 +1,5 @@
-using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
-using UnityEngine.EventSystems;
 using UnityEngine.UI;
 
 public class General : MonoBehaviour
@@ -18,7 +16,6 @@ public class General : MonoBehaviour
 
     Role _shown;
     bool _opened;
-    readonly List<RaycastResult> _uiHits = new List<RaycastResult>();
 
     void Awake()
     {
@@ -35,9 +32,6 @@ public class General : MonoBehaviour
     {
         if (!_opened)
             TryShowProtagonist();
-
-        if (Input.GetMouseButtonDown(0))
-            HandleClick();
     }
 
     void TryShowProtagonist()
@@ -57,21 +51,6 @@ public class General : MonoBehaviour
 
     public void Show(Role role)
     {
-        if (role == null)
-            return;
-
-        _shown = role;
-        _opened = true;
-        Write(role);
-    }
-
-    public void ShowFirstPlayer()
-    {
-        BoardGrid grid = board != null ? board : BoardGrid.Instance;
-        if (grid == null || grid.cellContent == null)
-            return;
-
-        Role role = Protagonist(grid);
         if (role == null)
             return;
 
@@ -102,41 +81,6 @@ public class General : MonoBehaviour
         if (role == null || role != _shown)
             return;
         Write(role);
-    }
-
-    void HandleClick()
-    {
-        if (PointerOverButton() || board == null || board.cellContent == null || Camera.main == null)
-            return;
-        if (!board.TryScreenToCell(Input.mousePosition, out int col, out int row))
-            return;
-
-        BoardGrid.CellContent content = board.cellContent[col, row];
-        Role role = content != null && content.instance != null
-            ? content.instance.GetComponent<Role>()
-            : null;
-        if (role == null)
-            return;
-
-        _shown = role;
-        Write(role);
-    }
-
-    bool PointerOverButton()
-    {
-        if (EventSystem.current == null)
-            return false;
-
-        _uiHits.Clear();
-        var pointer = new PointerEventData(EventSystem.current);
-        pointer.position = Input.mousePosition;
-        EventSystem.current.RaycastAll(pointer, _uiHits);
-        for (int i = 0; i < _uiHits.Count; i++)
-        {
-            if (_uiHits[i].gameObject.GetComponentInParent<Button>() != null)
-                return true;
-        }
-        return false;
     }
 
     void Write(Role role)

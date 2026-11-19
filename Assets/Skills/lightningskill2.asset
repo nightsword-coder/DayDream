@@ -14,10 +14,11 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   skillName: "\u795E\u9704\u82CD\u96F7"
   image: {fileID: 21300000, guid: ca38da25e5436437d88a277b6f55f639, type: 3}
-  mana: 5
+  mana: 8
   power: 100
   range: 3
-  effectIds: 
+  targetSelf: 0
+  effectIds: 000000000800000004000000
   cells:
   - {x: 0, y: 0}
-  description: "神霄苍雷\n魔力消耗：中\n威力：中"
+  description: "\u795E\u9704\u82CD\u96F7\n\u9B54\u529B\u6D88\u8017\uFF1A\u4E2D\n\u5A01\u529B\uFF1A\u4E2D"
