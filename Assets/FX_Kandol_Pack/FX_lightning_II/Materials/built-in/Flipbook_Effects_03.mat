@@ -61,5 +61,5 @@ Material:
     - __ZWrite__: 0
     m_Colors:
     - _Gradetion_NoisexyTilingyzOffset: {r: 1, g: 1, b: 0, a: 0}
-    - _TintColor: {r: 0.25640798, g: 0.25640798, b: 0.8113208, a: 0.54901963}
+    - _TintColor: {r: 0.24056602, g: 0.24056602, b: 1, a: 0.54901963}
   m_BuildTextureStacks: []

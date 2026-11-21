@@ -17,7 +17,8 @@ MonoBehaviour:
   mana: 5
   power: 100
   range: 3
-  effectIds: 
+  targetSelf: 0
+  effectIds: 0a000000
   cells:
   - {x: 0, y: 0}
-  description: "擎琼引雪\n魔力消耗：中\n威力：中"
+  description: "\u64CE\u743C\u5F15\u96EA\n\u9B54\u529B\u6D88\u8017\uFF1A\u4E2D\n\u5A01\u529B\uFF1A\u4E2D"

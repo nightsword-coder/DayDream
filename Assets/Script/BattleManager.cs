@@ -150,6 +150,14 @@ public class BattleManager : MonoBehaviour
                 if (General.Instance != null)
                     General.Instance.Show(role);
                 Enemy enemy = role.GetComponent<Enemy>();
+                if (enemy != null && role.frozenTurns > 0)
+                {
+                    CanMove = false;
+                    CanAttack = false;
+                    role.ApplyFrozen(-1);
+                    EndTurn();
+                    return;
+                }
                 if (enemy != null)
                     enemy.Act();
                 return;

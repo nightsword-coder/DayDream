@@ -14,6 +14,8 @@ public class SkillExecutor : MonoBehaviour
 
     public GameObject lightningPrefab;
 
+    public GameObject slashTrailPrefab;
+
     public Role caster { get; private set; }
     public Role target { get; private set; }
     public Skill skill { get; private set; }

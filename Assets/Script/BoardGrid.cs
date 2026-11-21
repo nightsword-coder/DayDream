@@ -433,15 +433,9 @@ public class BoardGrid : MonoBehaviour
             return;
 
         FaceToward(_selectedCol, _selectedRow, col, row);
-        int damage = Mathf.Max(attacker.physicalAttack, attacker.magicAttack);
-        if (SkillEffects.Behind(attacker, this, target))
-            damage = damage * 125 / 100;
-        target.health -= damage;
-        target.PlayHurt();
-        DamagePopup.Spawn(target, damage);
+        attacker.ApplyAttack(target, this);
         if (BattleManager.Instance != null)
             BattleManager.Instance.UseAttack();
-        Debug.Log($"造成 {damage} 点伤害，剩余生命 {target.health}");
     }
 
     void EndAttack()

@@ -13,20 +13,24 @@ public class Role : MonoBehaviour
     public int manaRegen;
     public int moveRange = 4;
     public int range = 1;
+    public GameObject attackTrail;
     public Sprite poisonSprite;
     public Sprite wetSprite;
+    public Sprite frozenSprite;
     public string roleName;
 
     public int healthMax { get; private set; }
     public int currentMana { get; private set; }
     public int poisonTurns { get; private set; }
     public int wetTurns { get; private set; }
+    public int frozenTurns { get; private set; }
 
     enum StatusIcon
     {
         None,
         Poison,
         Wet,
+        Frozen,
     }
 
     sealed class StatusView
@@ -48,6 +52,7 @@ public class Role : MonoBehaviour
     float _healthFillLeft;
     float _healthFillWidth;
     int _shownHealth = int.MinValue;
+    Transform _ice;
 
     public bool PlayingDeath { get; private set; }
 
@@ -61,7 +66,9 @@ public class Role : MonoBehaviour
         currentMana = 0;
         BindHealthBar();
         BindStatuses();
+        BindIce();
         RefreshStatusIcons();
+        SyncIce();
     }
 
     void LateUpdate()
@@ -194,6 +201,15 @@ public class Role : MonoBehaviour
         RefreshStatusIcons();
     }
 
+    public void ApplyFrozen(int x)
+    {
+        frozenTurns += x;
+        if (frozenTurns < 0)
+            frozenTurns = 0;
+        RefreshStatusIcons();
+        SyncIce();
+    }
+
     public void TickStatuses()
     {
         if (poisonTurns > 0)
@@ -243,7 +259,32 @@ public class Role : MonoBehaviour
 
         SyncIcon(StatusIcon.Poison, poisonTurns, poisonSprite);
         SyncIcon(StatusIcon.Wet, wetTurns, wetSprite);
+        SyncIcon(StatusIcon.Frozen, frozenTurns, frozenSprite);
         CompactStatuses();
+    }
+
+    void BindIce()
+    {
+        Transform[] children = GetComponentsInChildren<Transform>(true);
+        for (int i = 0; i < children.Length; i++)
+        {
+            Transform child = children[i];
+            if (child == transform)
+                continue;
+            if (!string.Equals(child.name.Trim(), "ice", System.StringComparison.OrdinalIgnoreCase))
+                continue;
+            _ice = child;
+            return;
+        }
+    }
+
+    void SyncIce()
+    {
+        if (_ice == null)
+            BindIce();
+        if (_ice == null)
+            return;
+        _ice.gameObject.SetActive(frozenTurns > 0);
     }
 
     void SyncIcon(StatusIcon icon, int turns, Sprite sprite)
@@ -343,6 +384,22 @@ public class Role : MonoBehaviour
         health -= damage;
         PlayHurt();
         DamagePopup.Spawn(this, damage);
+    }
+
+    public void ApplyAttack(Role target, BoardGrid board)
+    {
+        if (target == null)
+            return;
+
+        int damage = Mathf.Max(physicalAttack, magicAttack);
+        if (board != null && SkillEffects.Behind(this, board, target))
+            damage = damage * 125 / 100;
+        target.health -= damage;
+        target.PlayHurt();
+        DamagePopup.Spawn(target, damage);
+        Debug.Log($"造成 {damage} 点伤害，剩余生命 {target.health}");
+        if (attackTrail != null)
+            SkillEffects.PlaySlash(target, attackTrail, this);
     }
 
     public bool Cast(Role target)

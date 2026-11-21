@@ -19,6 +19,8 @@ public static class SkillEffects
         Push,       //7击退10格
         Chain,      //8闪电链
         HealSelf,   //9按百分比治疗自己
+        Freeze,     //10施加2层冰冻
+        Slash,      //11刀光拖尾
     };
 
     public static SkillFx FunctionAt(int id)
@@ -37,8 +39,119 @@ public static class SkillEffects
         for (int i = 0; i < board.TargetCount; i++)
         {
             Role enemy = board.TargetAt(i);
-            if (Affects(role, enemy, false))
-                Apply(role, board, skill, enemy);
+            if (!Affects(role, enemy, false))
+                continue;
+            if (enemy.frozenTurns > 0)
+            {
+                SkillExecutor.Instance.RememberTarget(enemy);
+                enemy.ApplyFrozen(-1);
+                continue;
+            }
+            Apply(role, board, skill, enemy);
+        }
+        Finish();
+    }
+
+    static IEnumerator Slash(Role role, BoardGrid board, int col, int row)
+    {
+        if (!Prepared(board, CurrentSkill))
+            yield break;
+
+        for (int i = 0; i < board.TargetCount; i++)
+        {
+            Role enemy = board.TargetAt(i);
+            if (!Affects(role, enemy, false))
+                continue;
+            SkillExecutor.Instance.RememberTarget(enemy);
+            PlaySlash(enemy, SkillExecutor.Instance.slashTrailPrefab, SkillExecutor.Instance);
+        }
+        Finish();
+    }
+
+    const float SlashSeconds = 0.12f;
+
+    public static void PlaySlash(Role target, GameObject template, MonoBehaviour host)
+    {
+        if (target == null || template == null || host == null)
+            return;
+
+        SpriteRenderer sprite = target.GetComponent<SpriteRenderer>();
+        if (sprite == null)
+            sprite = target.GetComponentInChildren<SpriteRenderer>(true);
+        Vector3 start;
+        Vector3 end;
+        if (sprite != null && sprite.sprite != null)
+        {
+            Bounds bounds = sprite.bounds;
+            float z = bounds.center.z - 0.2f;
+            start = new Vector3(bounds.min.x, bounds.max.y, z);
+            end = new Vector3(bounds.max.x, bounds.min.y, z);
+        }
+        else
+        {
+            Vector3 at = target.transform.position;
+            start = at + new Vector3(-0.4f, 0.5f, -0.2f);
+            end = at + new Vector3(0.4f, -0.5f, -0.2f);
+        }
+
+        GameObject slash = Object.Instantiate(template, target.transform);
+        slash.name = "Slash";
+        Vector3 scale = target.transform.lossyScale;
+        slash.transform.localScale = new Vector3(
+            Mathf.Approximately(scale.x, 0f) ? 1f : 1f / scale.x,
+            Mathf.Approximately(scale.y, 0f) ? 1f : 1f / scale.y,
+            Mathf.Approximately(scale.z, 0f) ? 1f : 1f / scale.z);
+        slash.transform.localRotation = Quaternion.identity;
+
+        TrailRenderer trail = slash.GetComponent<TrailRenderer>();
+        if (trail != null)
+        {
+            trail.emitting = false;
+            trail.Clear();
+            if (sprite != null)
+            {
+                trail.sortingLayerID = sprite.sortingLayerID;
+                trail.sortingOrder = sprite.sortingOrder;
+            }
+        }
+
+        slash.transform.position = start;
+        if (trail != null)
+        {
+            trail.Clear();
+            trail.emitting = true;
+        }
+        host.StartCoroutine(MoveSlash(slash, start, end));
+    }
+
+    static IEnumerator MoveSlash(GameObject slash, Vector3 start, Vector3 end)
+    {
+        float time = 0f;
+        while (time < SlashSeconds)
+        {
+            if (slash == null)
+                yield break;
+            time += Time.deltaTime;
+            slash.transform.position = Vector3.Lerp(start, end, Mathf.Clamp01(time / SlashSeconds));
+            yield return null;
+        }
+
+        if (slash != null)
+            Object.Destroy(slash);
+    }
+
+    static IEnumerator Freeze(Role role, BoardGrid board, int col, int row)
+    {
+        if (!Prepared(board, CurrentSkill))
+            yield break;
+
+        for (int i = 0; i < board.TargetCount; i++)
+        {
+            Role enemy = board.TargetAt(i);
+            if (!Affects(role, enemy, false))
+                continue;
+            SkillExecutor.Instance.RememberTarget(enemy);
+            enemy.ApplyFrozen(2);
         }
         Finish();
     }
