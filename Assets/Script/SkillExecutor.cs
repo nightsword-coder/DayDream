@@ -84,21 +84,21 @@ public class SkillExecutor : MonoBehaviour
         if (ids == null || ids.Length == 0)
             ids = new[] { 0 };
 
+        _routines.Add(StartCoroutine(RunCast(ids, actor, grid, col, row)));
+        grid.ClearSkillMarks();
+    }
+
+    IEnumerator RunCast(int[] ids, Role actor, BoardGrid grid, int col, int row)
+    {
+        _running++;
         for (int i = 0; i < ids.Length; i++)
         {
             SkillFx fx = SkillEffects.FunctionAt(ids[i]);
             if (fx == null)
                 continue;
-            _routines.Add(StartCoroutine(Run(fx, actor, grid, col, row)));
+            yield return StartCoroutine(fx(actor, grid, col, row));
         }
 
-        grid.ClearSkillMarks();
-    }
-
-    IEnumerator Run(SkillFx fx, Role actor, BoardGrid grid, int col, int row)
-    {
-        _running++;
-        yield return StartCoroutine(fx(actor, grid, col, row));
         _running = Mathf.Max(0, _running - 1);
     }
 
@@ -202,6 +202,11 @@ public class SkillExecutor : MonoBehaviour
 
     BoardGrid Grid
     {
-        get { return board != null ? board : BoardGrid.Instance; }
+        get
+        {
+            if (board != null && board.isActiveAndEnabled)
+                return board;
+            return BoardGrid.Instance;
+        }
     }
 }

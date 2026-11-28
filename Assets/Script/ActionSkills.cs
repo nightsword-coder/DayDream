@@ -74,6 +74,18 @@ public class ActionSkills : MonoBehaviour
         Show();
     }
 
+    public void SetSkills(IList<Skill> source)
+    {
+        skills.Clear();
+        if (source != null)
+        {
+            for (int i = 0; i < source.Count && skills.Count < 4; i++)
+                skills.Add(source[i]);
+        }
+        _selected = -1;
+        Show();
+    }
+
     void Show()
     {
         Transform root = transform.Find("equippedskills");

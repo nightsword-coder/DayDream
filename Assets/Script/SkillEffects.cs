@@ -21,6 +21,7 @@ public static class SkillEffects
         HealSelf,   //9按百分比治疗自己
         Freeze,     //10施加2层冰冻
         Slash,      //11刀光拖尾
+        Projectile, //12抛物线投射物
     };
 
     public static SkillFx FunctionAt(int id)
@@ -138,6 +139,155 @@ public static class SkillEffects
 
         if (slash != null)
             Object.Destroy(slash);
+    }
+
+    const float ProjectileLift = 0.45f;
+    const float ProjectileSpeed = 10f;
+
+    static IEnumerator Projectile(Role role, BoardGrid board, int col, int row)
+    {
+        if (!Prepared(board, CurrentSkill))
+            yield break;
+
+        GameObject prefab = FirstProjectile(role);
+        int count = board.TargetCount;
+        var shots = new GameObject[count];
+        var starts = new Vector3[count];
+        var ends = new Vector3[count];
+        var heights = new float[count];
+        var durations = new float[count];
+        float longest = 0f;
+
+        for (int i = 0; i < count; i++)
+        {
+            Role enemy = board.TargetAt(i);
+            if (!Affects(role, enemy, false))
+                continue;
+
+            SkillExecutor.Instance.RememberTarget(enemy);
+            if (prefab == null)
+                continue;
+
+            Vector3 start = role.transform.position;
+            start.y += ProjectileLift;
+            Vector3 end = enemy.transform.position;
+            float span = Vector2.Distance(start, end);
+            float height = Mathf.Clamp(Mathf.Max(span, 1.5f) * 0.85f, 2.4f, 4.5f);
+            float duration = Mathf.Clamp((span + height) / ProjectileSpeed, 0.5f, 0.7f);
+
+            GameObject shot = Object.Instantiate(prefab, start, Quaternion.identity);
+            shots[i] = shot;
+            starts[i] = start;
+            ends[i] = end;
+            heights[i] = height;
+            durations[i] = duration;
+            if (duration > longest)
+                longest = duration;
+            AimProjectile(shot.transform, ProjectileTangent(start, end, height, 0f));
+            LiftSorting(shot, enemy);
+        }
+
+        if (longest <= 0f)
+        {
+            Finish();
+            yield break;
+        }
+
+        float time = 0f;
+        while (time < longest)
+        {
+            time += Time.deltaTime;
+            for (int i = 0; i < count; i++)
+            {
+                GameObject shot = shots[i];
+                if (shot == null)
+                    continue;
+
+                float u = Mathf.Clamp01(time / durations[i]);
+                shot.transform.position = ProjectilePoint(starts[i], ends[i], heights[i], u);
+                AimProjectile(shot.transform, ProjectileTangent(starts[i], ends[i], heights[i], u));
+            }
+
+            if (time >= longest)
+                break;
+            yield return null;
+        }
+
+        for (int i = 0; i < count; i++)
+        {
+            if (shots[i] != null)
+                Object.Destroy(shots[i]);
+        }
+        Finish();
+    }
+
+    static GameObject FirstProjectile(Role role)
+    {
+        GameObject[] list = role != null ? role.projectiles : null;
+        if (list == null)
+            return null;
+
+        for (int i = 0; i < list.Length; i++)
+        {
+            if (list[i] != null)
+                return list[i];
+        }
+        return null;
+    }
+
+    static Vector3 ProjectilePoint(Vector3 start, Vector3 end, float height, float u)
+    {
+        Vector3 rise = start;
+        rise.y += height;
+        Vector3 dive = end;
+        dive.y += height;
+        float t = Mathf.Clamp01(u);
+        float stay = 1f - t;
+        return stay * stay * stay * start
+            + 3f * stay * stay * t * rise
+            + 3f * stay * t * t * dive
+            + t * t * t * end;
+    }
+
+    static Vector3 ProjectileTangent(Vector3 start, Vector3 end, float height, float u)
+    {
+        Vector3 rise = start;
+        rise.y += height;
+        Vector3 dive = end;
+        dive.y += height;
+        float t = Mathf.Clamp01(u);
+        float stay = 1f - t;
+        return 3f * stay * stay * (rise - start)
+            + 6f * stay * t * (dive - rise)
+            + 3f * t * t * (end - dive);
+    }
+
+    static void AimProjectile(Transform shot, Vector3 tangent)
+    {
+        float dx = tangent.x;
+        float dy = tangent.y;
+        if (dx * dx + dy * dy < 0.0001f)
+            return;
+
+        // 预制件默认竖直向上，0 度是正上方，落到终点时转到正下方。
+        float angle = Mathf.Atan2(dy, dx) * Mathf.Rad2Deg - 90f;
+        shot.rotation = Quaternion.Euler(0f, 0f, angle);
+    }
+
+    static void LiftSorting(GameObject shot, Role target)
+    {
+        SpriteRenderer sprite = target.GetComponent<SpriteRenderer>();
+        if (sprite == null)
+            sprite = target.GetComponentInChildren<SpriteRenderer>(true);
+        if (sprite == null)
+            return;
+
+        Renderer[] renderers = shot.GetComponentsInChildren<Renderer>(true);
+        for (int i = 0; i < renderers.Length; i++)
+        {
+            renderers[i].sortingLayerID = sprite.sortingLayerID;
+            renderers[i].sortingOrder = sprite.sortingOrder + 2;
+        }
     }
 
     static IEnumerator Freeze(Role role, BoardGrid board, int col, int row)
@@ -523,6 +673,10 @@ public static class SkillEffects
         if (enemy.wetTurns > 0 && HasEffect(skill, 3))
             power *= 2;
         int damage = role.magicAttack * power / 100;
+        //物理伤害高就用物理
+        if(role.physicalAttack*power/100 > damage){
+            damage = role.physicalAttack * power / 100;
+        }
         if (Behind(role, board, enemy))
             damage = damage * 125 / 100;
         SkillExecutor.Instance.RememberTarget(enemy);

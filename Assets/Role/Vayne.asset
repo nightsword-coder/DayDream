@@ -1,0 +1,35 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a7c3e1b94d2f4a6e8c0b5d71f3a9e246, type: 3}
+  m_Name: Vayne
+  m_EditorClassIdentifier: 
+  roleName: "\u8587\u6069"
+  EnglishName: Vayne
+  portrait: {fileID: 21300000, guid: 3ed7c0945aaff43ec9c683bec67d562d, type: 3}
+  health: 30
+  physicalAttack: 10
+  magicAttack: 2
+  manaMax: 30
+  manaRegen: 5
+  moveRange: 4
+  range: 1
+  attack: {fileID: 21300000, guid: affa3b6a9104d41838d1dcdc8ba0215d, type: 3}
+  attackTrail: {fileID: 8436982954249350920, guid: a619545dd310549689e0fc20ca1dfa6f, type: 3}
+  projectiles:
+  - {fileID: 3582101566176781462, guid: 164cfb7a01217489bb9b50a5dac5096c, type: 3}
+  poisonSprite: {fileID: 21300000, guid: 6eb620c3006b04ef1837ec9f00d83977, type: 3}
+  wetSprite: {fileID: 21300000, guid: 5d467d61fc23f497b873aa234a61e649, type: 3}
+  frozenSprite: {fileID: 21300000, guid: 2e41ac5d953aa4cf5a5539d7f71a3c79, type: 3}
+  skills:
+  - {fileID: 11400000, guid: ab6c6ef01709a482b85bfd14c1d41129, type: 2}
+  - {fileID: 11400000, guid: 6cea2415902b940a0bf60233e946c4a0, type: 2}
+  - {fileID: 11400000, guid: 269848f4b3a8b4874acf48f08d3792b0, type: 2}

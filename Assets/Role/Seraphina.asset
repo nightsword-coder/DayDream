@@ -1,0 +1,35 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a7c3e1b94d2f4a6e8c0b5d71f3a9e246, type: 3}
+  m_Name: Seraphina
+  m_EditorClassIdentifier: 
+  roleName: "\u585E\u62C9\u83F2\u5A1C"
+  EnglishName: Seraphina
+  portrait: {fileID: 21300000, guid: 2386197e140224f30ab45ecf8f7d5f0f, type: 3}
+  health: 30
+  physicalAttack: 2
+  magicAttack: 10
+  manaMax: 30
+  manaRegen: 10
+  moveRange: 4
+  range: 1
+  attack: {fileID: 21300000, guid: 5cc978ffa24fe45f4aef5e4112dc6e87, type: 3}
+  attackTrail: {fileID: 8436982954249350920, guid: b8dfad1d3c40747b19e1b005772b35f2, type: 3}
+  projectiles: []
+  poisonSprite: {fileID: 21300000, guid: 6eb620c3006b04ef1837ec9f00d83977, type: 3}
+  wetSprite: {fileID: 21300000, guid: 5d467d61fc23f497b873aa234a61e649, type: 3}
+  frozenSprite: {fileID: 21300000, guid: 2e41ac5d953aa4cf5a5539d7f71a3c79, type: 3}
+  skills:
+  - {fileID: 11400000, guid: 7b9660347dac64c1e94cd81a02eec1fe, type: 2}
+  - {fileID: 11400000, guid: 1abd79c012fb142abadee42bf2d2d66b, type: 2}
+  - {fileID: 11400000, guid: 7deff252abd0f47bab514abe17b2399e, type: 2}
+  - {fileID: 11400000, guid: 8b25fc9ff533d49c2a87fbba3ff1b6ea, type: 2}

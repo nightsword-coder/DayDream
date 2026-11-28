@@ -39,3 +39,6 @@ MonoBehaviour:
   - col: 3
     row: 7
     prefab: {fileID: 560447234818239340, guid: 16653fd9ca806459897be4078a6dc1b0, type: 3}
+  - col: 0
+    row: 1
+    prefab: {fileID: 7203576444371313994, guid: 167a75b48a6534cae96b8d0b65f7359c, type: 3}

@@ -902,19 +902,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 7f3c1a9e4b2d4c68a0e5d91b6c8f2047, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  portrait: {fileID: 21300000, guid: 2386197e140224f30ab45ecf8f7d5f0f, type: 3}
-  health: 30
-  physicalAttack: 2
-  magicAttack: 10
-  manaMax: 30
-  manaRegen: 10
-  moveRange: 4
-  range: 1
-  attackTrail: {fileID: 8436982954249350920, guid: b8dfad1d3c40747b19e1b005772b35f2, type: 3}
-  poisonSprite: {fileID: 21300000, guid: 6eb620c3006b04ef1837ec9f00d83977, type: 3}
-  wetSprite: {fileID: 21300000, guid: 5d467d61fc23f497b873aa234a61e649, type: 3}
-  frozenSprite: {fileID: 21300000, guid: 2e41ac5d953aa4cf5a5539d7f71a3c79, type: 3}
-  roleName: "\u585E\u62C9\u83F2\u5A1C"
+  data: {fileID: 11400000, guid: b1e4c8a27f6d4e3091ab6c5d8e0f3a17, type: 2}
 --- !u!95 &2716248818561221688
 Animator:
   serializedVersion: 5

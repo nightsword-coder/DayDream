@@ -1,25 +1,30 @@
 using System.Collections;
+using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
 
 public class Role : MonoBehaviour
 {
-    public Sprite portrait;
+    public RoleData data;
 
-    public int health = 30;
-    public int physicalAttack = 10;
-    public int magicAttack = 10;
-    public int manaMax = 10;
-    public int manaRegen;
-    public int moveRange = 4;
-    public int range = 1;
-    public GameObject attackTrail;
-    public Sprite poisonSprite;
-    public Sprite wetSprite;
-    public Sprite frozenSprite;
-    public string roleName;
-
+    public int health { get; set; }
     public int healthMax { get; private set; }
+    public string roleName => data != null ? data.roleName : "";
+    public Sprite portrait => data != null ? data.portrait : null;
+    public int physicalAttack => data != null ? data.physicalAttack : 10;
+    public int magicAttack => data != null ? data.magicAttack : 10;
+    public int manaMax => data != null ? data.manaMax : 10;
+    public int moveRange => data != null ? data.moveRange : 4;
+    public int range => data != null ? data.range : 1;
+    public Sprite attack => data != null ? data.attack : null;
+    public GameObject attackTrail => data != null ? data.attackTrail : null;
+    public GameObject[] projectiles => data != null ? data.projectiles : null;
+    public List<Skill> skills => data != null ? data.skills : null;
+
+    int manaRegen => data != null ? data.manaRegen : 0;
+    Sprite poisonSprite => data != null ? data.poisonSprite : null;
+    Sprite wetSprite => data != null ? data.wetSprite : null;
+    Sprite frozenSprite => data != null ? data.frozenSprite : null;
     public int currentMana { get; private set; }
     public int poisonTurns { get; private set; }
     public int wetTurns { get; private set; }
@@ -62,6 +67,7 @@ public class Role : MonoBehaviour
         if (_renderer != null)
             _color = _renderer.color;
         _scale = transform.localScale;
+        health = data != null ? data.health : 30;
         healthMax = health;
         currentMana = 0;
         BindHealthBar();
@@ -394,12 +400,26 @@ public class Role : MonoBehaviour
         int damage = Mathf.Max(physicalAttack, magicAttack);
         if (board != null && SkillEffects.Behind(this, board, target))
             damage = damage * 125 / 100;
+        if(target.frozenTurns==0){
         target.health -= damage;
         target.PlayHurt();
         DamagePopup.Spawn(target, damage);
-        Debug.Log($"造成 {damage} 点伤害，剩余生命 {target.health}");
+        }
+        else{
+            target.applyFrozen(-1);
+            target.PlayHurt();
+        }
+        //DamagePopup.Spawn(target, damage);
         if (attackTrail != null)
             SkillEffects.PlaySlash(target, attackTrail, this);
+    }
+    
+    public void applyFrozen(int x){
+        frozenTurns += x;
+        if (frozenTurns < 0)
+            frozenTurns = 0;
+        RefreshStatusIcons();
+        SyncIce();
     }
 
     public bool Cast(Role target)

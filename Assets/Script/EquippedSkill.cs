@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
@@ -35,6 +36,13 @@ public class EquippedSkill : MonoBehaviour
         if (open && !_panelWasOpen)
             Refresh();
         _panelWasOpen = open;
+    }
+
+    public void SetSkills(IList<Skill> source)
+    {
+        for (int i = 0; i < _equipped.Length; i++)
+            _equipped[i] = source != null && i < source.Count ? source[i] : null;
+        Refresh();
     }
 
     public Skill EquippedAt(int index)

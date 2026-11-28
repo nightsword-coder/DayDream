@@ -443,19 +443,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 7f3c1a9e4b2d4c68a0e5d91b6c8f2047, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  portrait: {fileID: 21300000, guid: a99234cb526124a82ada6d2ac2f2337a, type: 3}
-  health: 50
-  physicalAttack: 10
-  magicAttack: 2
-  manaMax: 30
-  manaRegen: 5
-  moveRange: 4
-  range: 1
-  attackTrail: {fileID: 8436982954249350920, guid: a619545dd310549689e0fc20ca1dfa6f, type: 3}
-  poisonSprite: {fileID: 21300000, guid: 6eb620c3006b04ef1837ec9f00d83977, type: 3}
-  wetSprite: {fileID: 21300000, guid: 5d467d61fc23f497b873aa234a61e649, type: 3}
-  frozenSprite: {fileID: 21300000, guid: 2e41ac5d953aa4cf5a5539d7f71a3c79, type: 3}
-  roleName: "\u83F2\u5A05\u6885\u5854"
+  data: {fileID: 11400000, guid: c2f5d9b38a7e4f41a2bc7d6e9f104b28, type: 2}
 --- !u!114 &-528839558274080963
 MonoBehaviour:
   m_ObjectHideFlags: 0

@@ -70,6 +70,7 @@
     <Compile Include="Assets/Script/BoardGrid.cs" />
     <Compile Include="Assets/TextMesh Pro/Examples &amp; Extras/Scripts/TMP_TextEventHandler.cs" />
     <Compile Include="Assets/TextMesh Pro/Examples &amp; Extras/Scripts/VertexShakeA.cs" />
+    <Compile Include="Assets/Script/SkillManager.cs" />
     <Compile Include="Assets/Script/BookshelfShop.cs" />
     <Compile Include="Assets/TextMesh Pro/Examples &amp; Extras/Scripts/TMP_ExampleScript_01.cs" />
     <Compile Include="Assets/TextMesh Pro/Examples &amp; Extras/Scripts/TMPro_InstructionOverlay.cs" />
@@ -125,6 +126,7 @@
     <Compile Include="Assets/Script/Backpack.cs" />
     <Compile Include="Assets/Script/General.cs" />
     <Compile Include="Assets/TextMesh Pro/Examples &amp; Extras/Scripts/Benchmark03.cs" />
+    <Compile Include="Assets/Script/RoleData.cs" />
     <Compile Include="Assets/Script/Role.cs" />
     <Compile Include="Assets/Script/SkillExecutor.cs" />
     <Compile Include="Assets/Script/BoardSetup.cs" />

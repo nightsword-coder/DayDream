@@ -36,6 +36,7 @@ public class CheckerBoard : MonoBehaviour
     void Awake()
     {
         Build();
+        ApplyFloorOrder();
     }
 
 #if UNITY_EDITOR
@@ -50,6 +51,7 @@ public class CheckerBoard : MonoBehaviour
         if (this == null)
             return;
         Build();
+        ApplyFloorOrder();
     }
 #endif
 
@@ -74,6 +76,7 @@ public class CheckerBoard : MonoBehaviour
                 cell.transform.localPosition = localPosition;
                 SpriteRenderer renderer = cell.AddComponent<SpriteRenderer>();
                 renderer.sprite = sprite;
+                renderer.sortingLayerID = 0;
                 renderer.sortingOrder = sortingOrder;
             }
         }
@@ -85,6 +88,25 @@ public class CheckerBoard : MonoBehaviour
         }
 
         _building = false;
+        ApplyFloorOrder();
+    }
+
+    // 格子和底座都在默认层，顺序 0。高亮用顺序 1 盖在上面。
+    void ApplyFloorOrder()
+    {
+        for (int i = 0; i < transform.childCount; i++)
+        {
+            Transform child = transform.GetChild(i);
+            string name = child.name;
+            if (!name.StartsWith(CellPrefix) && !name.StartsWith("BaseL_") && !name.StartsWith("BaseR_"))
+                continue;
+
+            SpriteRenderer renderer = child.GetComponent<SpriteRenderer>();
+            if (renderer == null)
+                continue;
+            renderer.sortingLayerID = 0;
+            renderer.sortingOrder = 0;
+        }
     }
 
     void SpawnBase(int col, int row, Sprite sprite, bool leftSide)
@@ -97,6 +119,7 @@ public class CheckerBoard : MonoBehaviour
         piece.transform.localPosition = localPosition;
         SpriteRenderer renderer = piece.AddComponent<SpriteRenderer>();
         renderer.sprite = sprite;
+        renderer.sortingLayerID = 0;
         renderer.sortingOrder = sortingOrder;
     }
 

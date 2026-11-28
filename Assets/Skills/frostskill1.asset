@@ -14,8 +14,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   skillName: "\u64CE\u743C\u5F15\u96EA"
   image: {fileID: 21300000, guid: 59adc257a9d0a42b5b2d1e7fca13b83a, type: 3}
-  mana: 5
-  power: 100
+  mana: 8
+  power: 0
   range: 3
   targetSelf: 0
   effectIds: 0a000000

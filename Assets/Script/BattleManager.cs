@@ -23,6 +23,8 @@ public class BattleManager : MonoBehaviour
     void Awake()
     {
         Instance = this;
+        if (SkillManager.Instance == null)
+            new GameObject("SkillManager").AddComponent<SkillManager>();
         if (endTurnButton != null)
             endTurnButton.onClick.AddListener(EndTurn);
         if (victoryPanel != null)
@@ -158,7 +160,14 @@ public class BattleManager : MonoBehaviour
                     EndTurn();
                     return;
                 }
-                if (enemy != null)
+                BoardActions.SetEnabled(enemy == null);
+                if (enemy == null)
+                {
+                    BoardActions.SetAttackSprite(role.attack);
+                    if (SkillManager.Instance != null)
+                        SkillManager.Instance.ApplyTurn(role);
+                }
+                else
                     enemy.Act();
                 return;
             }
@@ -223,6 +232,7 @@ public class BattleManager : MonoBehaviour
         Current = null;
         CanMove = false;
         CanAttack = false;
+        BoardActions.SetEnabled(false);
         if (victoryPanel != null)
             victoryPanel.SetActive(true);
     }
@@ -233,6 +243,7 @@ public class BattleManager : MonoBehaviour
         Current = null;
         CanMove = false;
         CanAttack = false;
+        BoardActions.SetEnabled(false);
         if (FailPanel != null)
             FailPanel.SetActive(true);
     }

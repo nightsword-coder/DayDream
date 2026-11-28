@@ -44,6 +44,7 @@ public class BoardGrid : MonoBehaviour
     [Header("移动")]
     public Color moveRangeColor = new Color(0.25f, 0.55f, 1f, 0.45f);
     [Min(0.02f)]
+    [Tooltip("走一格花费的秒数。")]
     public float stepSeconds = 0.5f;
 
     [Header("路径箭头")]
@@ -140,6 +141,8 @@ public class BoardGrid : MonoBehaviour
     void Start()
     {
         SpawnInitialPieces();
+        if (Instance == this)
+            BoardActions.BindTo(this);
     }
 
     void OnValidate()
@@ -436,6 +439,7 @@ public class BoardGrid : MonoBehaviour
         attacker.ApplyAttack(target, this);
         if (BattleManager.Instance != null)
             BattleManager.Instance.UseAttack();
+        BoardActions.SetAttackEnabled(false);
     }
 
     void EndAttack()
@@ -772,6 +776,7 @@ public class BoardGrid : MonoBehaviour
         _movingRole = path.Count > 0 ? RoleAt(path[0].x, path[0].y) : null;
         if (BattleManager.Instance != null)
             BattleManager.Instance.UseMove();
+        BoardActions.SetMoveEnabled(false);
         ClearMoveRange();
         ShowMark(col, row, emptyClickColor);
 
@@ -790,10 +795,11 @@ public class BoardGrid : MonoBehaviour
             return;
 
         _moveTime += Time.fixedDeltaTime;
-        if (_moveTime < stepSeconds)
+        float duration = MoveStepDuration();
+        if (_moveTime < duration)
             return;
 
-        _moveTime -= stepSeconds;
+        _moveTime -= duration;
         if (_pathIndex >= _path.Count - 1)
         {
             FinishMove();
@@ -815,7 +821,7 @@ public class BoardGrid : MonoBehaviour
         }
 
         _moveTime += dt;
-        float duration = Mathf.Max(0.02f, stepSeconds);
+        float duration = MoveStepDuration();
         float t = Mathf.Clamp01(_moveTime / duration);
         Vector2Int from = _path[_pathIndex];
         CellContent piece = cellContent[from.x, from.y];
@@ -879,6 +885,12 @@ public class BoardGrid : MonoBehaviour
 
         if (TryGetPieceLocal(to.x, to.y, out Vector3 toLocal))
             _slideTo = toLocal;
+    }
+
+    // 走一格要花的时间。子类可以按格子的世界距离改，避免棋盘缩放过后面上变慢。
+    protected virtual float MoveStepDuration()
+    {
+        return Mathf.Max(0.02f, stepSeconds);
     }
 
     protected virtual void BeginPieceStep(int fromCol, int fromRow, int toCol, int toRow)
@@ -1030,8 +1042,8 @@ public class BoardGrid : MonoBehaviour
         piece.gameObject.SetActive(true);
         piece.sprite = sprite;
         piece.color = pathColor;
-        piece.sortingLayerID = _renderer.sortingLayerID;
-        piece.sortingOrder = _renderer.sortingOrder;
+        piece.sortingLayerID = 0;
+        piece.sortingOrder = 1;
         Vector3 depth = piece.transform.localPosition;
         depth.z = ArrowZ - orderOffset * 0.02f;
         piece.transform.localPosition = depth;
